@@ -14,6 +14,12 @@ export class User {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Column({ nullable: true })
+  verificationCode: string;
+
+  @Column({ nullable: true })
+  verificationCodeExpires: Date;
+
   @Column()
   userType: 'customer' | 'provider';
 
@@ -35,8 +41,12 @@ export class User {
   @Column({ nullable: true })
   profilePicture: string;
 
-  @Column({ nullable: true })
-  address: string;
+  @Column({ type: 'jsonb', nullable: true })
+  location: {
+    city: string;
+    state: string;
+    country: string;
+  };
 
   @CreateDateColumn()
   createdAt: Date;
