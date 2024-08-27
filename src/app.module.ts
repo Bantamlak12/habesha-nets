@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { User } from './modules/users/entities/user.entity';
+import { SmsModule } from './shared/sms/sms.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { User } from './modules/users/entities/user.entity';
     }),
     AuthModule,
     UsersModule,
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
