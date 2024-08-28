@@ -1,5 +1,5 @@
 import { IsOptional, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { plainToClass, Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { LocationDto } from './location.dto';
 
@@ -22,12 +22,19 @@ export class CustomerProfileDto {
   @ApiProperty({ example: '+25424545475' })
   phoneNumber: string;
 
-  @IsString()
-  @ApiProperty({ example: 'Upload image image' })
-  profilePicture: string;
-
   @ValidateNested()
   @Type(() => LocationDto)
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        const parsedValue = JSON.parse(value);
+        return plainToClass(LocationDto, parsedValue);
+      } catch (error) {
+        throw new Error(`Invalid JSON format for location. ${error}`);
+      }
+    }
+    return value;
+  })
   @ApiProperty({ type: LocationDto })
   location: LocationDto;
 }
