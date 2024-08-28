@@ -1,18 +1,30 @@
 import {
   Body,
   Controller,
+  FileTypeValidator,
   HttpStatus,
+  MaxFileSizeValidator,
   Param,
+  ParseFilePipe,
   Post,
   Response,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { Response as ExpressResponse } from 'express';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { VerificationCodeDto } from './dto/verification-code.dto';
 import { CustomerProfileDto } from './dto/customer-profile.dto';
 import { ProviderProfileDto } from './dto/provider-profile.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthService } from './auth.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -76,40 +88,120 @@ export class AuthController {
   }
 
   @Post('complete-customer-profile/:id')
+  @UseInterceptors(FileInterceptor('profilePicture'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'This endpoint is used to complete customer profile.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string', example: 'John' },
+        lastName: { type: 'string', example: 'Doe' },
+        email: { type: 'string', example: 'john12@gmail.com', nullable: true },
+        phoneNumber: {
+          type: 'string',
+          example: '+25424545475',
+          nullable: true,
+        },
+        profilePicture: {
+          type: 'string',
+          format: 'binary',
+          description: 'Profile picture file',
+        },
+        location: {
+          type: 'object',
+          properties: {
+            city: { type: 'string', example: 'Los Angeles' },
+            state: { type: 'string', example: 'California' },
+            country: { type: 'string', example: 'USA' },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 201 })
   async completeCustomerProfile(
     @Param('id') id: string,
     @Body() body: CustomerProfileDto,
     @Response() res: ExpressResponse,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /\/(jpeg|png|jpg)$/ }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    const user = await this.authService.completeCustomerProfile(id, body);
+    const user = await this.authService.completeCustomerProfile(id, body, file);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       message: 'You have completed your profile',
-      userId: user,
+      rowAffected: user.affected,
     });
   }
 
   @Post('complete-provider-profile/:id')
+  @UseInterceptors(FileInterceptor('profilePicture'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: "This endpoint is used to complete service provider's profile",
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string', example: 'John' },
+        lastName: { type: 'string', example: 'Doe' },
+        email: { type: 'string', example: 'john12@gmail.com', nullable: true },
+        phoneNumber: {
+          type: 'string',
+          example: '+25424545475',
+          nullable: true,
+        },
+        profilePicture: {
+          type: 'string',
+          format: 'binary',
+          description: 'Profile picture file',
+        },
+        location: {
+          type: 'object',
+          properties: {
+            city: { type: 'string', example: 'Los Angeles' },
+            state: { type: 'string', example: 'California' },
+            country: { type: 'string', example: 'USA' },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({ status: 201 })
   async completeProvidersProfile(
     @Param('id') id: string,
     @Body() body: ProviderProfileDto,
     @Response() res: ExpressResponse,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /\/(jpeg|png|jpg)$/ }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
-    const user = await this.authService.completeProviderProfile(id, body);
+    const user = await this.authService.completeProviderProfile(id, body, file);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       message: 'You have completed your profile',
-      userId: user,
+      rowAffected: user.affected,
     });
   }
 }
