@@ -12,6 +12,7 @@ import { User } from '../users/entities/user.entity';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
+import { UploadService } from 'src/shared/upload/upload.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
+    private readonly uploadService: UploadService,
   ) {}
   /****************************************************************************************/
   // COMMONLY USED METHODS
@@ -167,10 +169,67 @@ export class AuthService {
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
-  async completeCustomerProfile(userId: string, body: any) {}
+  async completeCustomerProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.userType !== 'customer') {
+      throw new NotFoundException('User not found');
+    }
 
-  async completeProviderProfile(userId: string, body: any) {}
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
 
+    // Update the fields
+    const updatedUser = this.userRepo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phoneNumber: body.phoneNumber,
+      profilePicture: profileURL,
+      location: body.location,
+    });
+
+    return updatedUser;
+  }
+
+  async completeProviderProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.userType !== 'provider') {
+      throw new NotFoundException('User not found');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = this.userRepo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phoneNumber: body.phoneNumber,
+      profilePicture: profileURL,
+      location: body.location,
+    });
+
+    return updatedUser;
+  }
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝟰) 𝗥𝗘𝗩𝗜𝗘𝗪 𝗔𝗡𝗗 𝗦𝗨𝗕𝗠𝗜𝗧⁡
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝟱) 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
