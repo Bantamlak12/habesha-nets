@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { User } from './modules/users/entities/user.entity';
 import { SmsModule } from './shared/sms/sms.module';
+import { UploadModule } from './shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SmsModule } from './shared/sms/sms.module';
     AuthModule,
     UsersModule,
     SmsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
