@@ -22,7 +22,7 @@ import {
 import { VerificationCodeDto } from './dto/verification-code.dto';
 import { CustomerProfileDto } from './dto/customer-profile.dto';
 import { ProviderProfileDto } from './dto/provider-profile.dto';
-import { CreateUserDto } from './dto/create-employer.dto';
+import { CreateEmployerDto } from './dto/create-employer.dto';
 import { AuthService } from './auth.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 
@@ -38,7 +38,7 @@ export class AuthController {
     description: 'A successful registration message.',
   })
   async createUser(
-    @Body() body: CreateUserDto,
+    @Body() body: CreateEmployerDto,
     @Response() res: ExpressResponse,
   ) {
     const userId = await this.authService.signup(body);

@@ -7,7 +7,7 @@ import { SmsModule } from 'src/shared/sms/sms.module';
 import { UploadModule } from 'src/shared/upload/upload.module';
 import { Employer } from '../users/entities/employer.entity';
 import { Freelancer } from '../users/entities/freelancer.entity';
-import { ServiceProvider } from '../users/entities/serviceProvider';
+import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 

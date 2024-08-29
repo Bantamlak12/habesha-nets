@@ -8,17 +8,29 @@ import {
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Employer } from '../users/entities/employer.entity';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
 import { UploadService } from 'src/shared/upload/upload.service';
+import { Employer } from '../users/entities/employer.entity';
+import { Freelancer } from '../users/entities/freelancer.entity';
+import { ServiceProvider } from '../users/entities/serviceProvider.entity';
+import { PropertyOwner } from '../users/entities/propertyOwner.entity';
+import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
+    @InjectRepository(Freelancer)
+    private readonly freelancerRepo: Repository<Freelancer>,
+    @InjectRepository(ServiceProvider)
+    private readonly serviceProviderRepo: Repository<ServiceProvider>,
+    @InjectRepository(PropertyOwner)
+    private readonly propertyOwnerRepo: Repository<PropertyOwner>,
+    @InjectRepository(PropertyRenter)
+    private readonly propertyRenterRepo: Repository<PropertyRenter>,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
     private readonly uploadService: UploadService,
@@ -46,6 +58,30 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
+  async validateAndHash(repo: Repository<any>, body: any) {
+    // Validate that email or phone number is not already in use
+    const existingUser = await repo.findOne({
+      where: [{ email: body.email }, { phoneNumber: body.phoneNumber }],
+    });
+
+    if (existingUser) {
+      if (existingUser.email === body.email) {
+        throw new ConflictException('Email is in use.');
+      }
+      if (existingUser.phoneNumber === body.phoneNumber) {
+        throw new ConflictException('Phone number is in use.');
+      }
+    }
+
+    // Check if the password and confirmPassword do match
+    const hashedPassword = await this.hashPassword(
+      body.password,
+      body.confirmPassword,
+    );
+
+    return hashedPassword;
+  }
+
   /****************************************************************************************/
   // APPLICATION RELATED METHODS
   /****************************************************************************************/
@@ -53,26 +89,10 @@ export class AuthService {
   // ⁡⁢⁢⁢𝟭) 𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
   async signup(body: any) {
     if (body.userType === 'employer') {
-      // Validate that email or phone number is not already in use
-      const existingUser = await this.employerRepo.findOne({
-        where: [{ email: body.email }, { phoneNumber: body.phoneNumber }],
-      });
-
-      if (existingUser) {
-        if (existingUser.email === body.email) {
-          throw new ConflictException('Email is in use.');
-        }
-        if (existingUser.phoneNumber === body.phoneNumber) {
-          throw new ConflictException('Phone number is in use.');
-        }
-      }
-
-      // Check if the password and confirmPassword do match
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
+      const hashedPassword = await this.validateAndHash(
+        this.employerRepo,
+        body,
       );
-
       // Create the user and save to the database
       const user = this.employerRepo.create({
         email: body.email ?? null,
@@ -80,25 +100,86 @@ export class AuthService {
         password: hashedPassword,
       });
       await this.employerRepo.save(user);
-
-      await this.generateAndSendVerificationCode(user.id, this.employerRepo);
-
+      await this.generateAndSendVerificationCode(this.employerRepo, user.id);
       return user.id;
     } else if (body.userType === 'freelancer') {
+      const hashedPassword = await this.validateAndHash(
+        this.freelancerRepo,
+        body,
+      );
+      // Create the user and save to the database
+      const user = this.freelancerRepo.create({
+        email: body.email ?? null,
+        phoneNumber: body.phoneNumber ?? null,
+        password: hashedPassword,
+      });
+      await this.freelancerRepo.save(user);
+      await this.generateAndSendVerificationCode(this.freelancerRepo, user.id);
+      return user.id;
     } else if (body.userType === 'serviceProvider') {
+      const hashedPassword = await this.validateAndHash(
+        this.serviceProviderRepo,
+        body,
+      );
+      // Create the user and save to the database
+      const user = this.serviceProviderRepo.create({
+        email: body.email ?? null,
+        phoneNumber: body.phoneNumber ?? null,
+        password: hashedPassword,
+      });
+      await this.serviceProviderRepo.save(user);
+      await this.generateAndSendVerificationCode(
+        this.serviceProviderRepo,
+        user.id,
+      );
+      return user.id;
     } else if (body.userType === 'propertyOwner') {
+      const hashedPassword = await this.validateAndHash(
+        this.propertyOwnerRepo,
+        body,
+      );
+      // Create the user and save to the database
+      const user = this.propertyOwnerRepo.create({
+        email: body.email ?? null,
+        phoneNumber: body.phoneNumber ?? null,
+        password: hashedPassword,
+      });
+      await this.propertyOwnerRepo.save(user);
+      await this.generateAndSendVerificationCode(
+        this.propertyOwnerRepo,
+        user.id,
+      );
+      return user.id;
     } else if (body.userType === 'propertyRenter') {
+      const hashedPassword = await this.validateAndHash(
+        this.propertyRenterRepo,
+        body,
+      );
+      // Create the user and save to the database
+      const user = this.propertyRenterRepo.create({
+        email: body.email ?? null,
+        phoneNumber: body.phoneNumber ?? null,
+        password: hashedPassword,
+      });
+      await this.propertyRenterRepo.save(user);
+      await this.generateAndSendVerificationCode(
+        this.propertyRenterRepo,
+        user.id,
+      );
+      return user.id;
+    } else {
+      return false;
     }
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝟮) 𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡⁡
   // Send 6-digit SMS or email verification code to the user
-  async generateAndSendVerificationCode<T>(
+  async generateAndSendVerificationCode(
+    repo: Repository<any>,
     userId: string,
-    repo: Repository<T>,
   ): Promise<void> {
     const user = await repo.findOne({
-      where: { id: userId } as any,
+      where: { id: userId },
     });
 
     if (!user) {

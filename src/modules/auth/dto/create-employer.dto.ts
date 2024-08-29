@@ -4,24 +4,27 @@ import {
   IsOptional,
   MinLength,
   IsPhoneNumber,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmailOrPhone } from 'src/common/is-phone-or-email.validator';
 
 @IsEmailOrPhone()
-export class CreateUserDto {
+export class CreateEmployerDto {
   @IsString()
+  @IsIn([
+    'employer',
+    'freelancer',
+    'serviceProvider',
+    'propertyOwner',
+    'propertyRenter',
+  ])
   @ApiProperty({
     example: 'employer',
     description:
-      'User type should be employer, freelancer, serviceProvider, propertyRenter or propertyOwner',
+      'User type must be one of these: employer, freelancer, serviceProvider, propertyRenter or propertyOwner',
   })
-  userType:
-    | 'employer'
-    | 'freelancer'
-    | 'serviceProvider'
-    | 'propertyOwner'
-    | 'propertyRenter';
+  userType: string;
 
   @IsOptional()
   @IsEmail({}, { message: 'Invalid email format' })

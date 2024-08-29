@@ -9,7 +9,7 @@ import { SmsModule } from './shared/sms/sms.module';
 import { UploadModule } from './shared/upload/upload.module';
 import { Employer } from './modules/users/entities/employer.entity';
 import { Freelancer } from './modules/users/entities/freelancer.entity';
-import { ServiceProvider } from './modules/users/entities/serviceProvider';
+import { ServiceProvider } from './modules/users/entities/serviceProvider.entity';
 import { PropertyOwner } from './modules/users/entities/propertyOwner.entity';
 import { PropertyRenter } from './modules/users/entities/propertyRenter.entity';
 
