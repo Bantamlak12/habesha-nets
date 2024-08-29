@@ -12,11 +12,16 @@ import { IsEmailOrPhone } from 'src/common/is-phone-or-email.validator';
 export class CreateUserDto {
   @IsString()
   @ApiProperty({
-    example: 'customer',
-    description: `User type should be customer if the user clicks the button 'Find a Professional'
-                  User type should be Provider if the user clicks the button 'Offer Serviceses'`,
+    example: 'employer',
+    description:
+      'User type should be employer, freelancer, serviceProvider, propertyRenter or propertyOwner',
   })
-  userType: string;
+  userType:
+    | 'employer'
+    | 'freelancer'
+    | 'serviceProvider'
+    | 'propertyOwner'
+    | 'propertyRenter';
 
   @IsOptional()
   @IsEmail({}, { message: 'Invalid email format' })
