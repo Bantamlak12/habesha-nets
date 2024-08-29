@@ -5,9 +5,13 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
-import { User } from './modules/users/entities/user.entity';
 import { SmsModule } from './shared/sms/sms.module';
 import { UploadModule } from './shared/upload/upload.module';
+import { Employer } from './modules/users/entities/employer.entity';
+import { Freelancer } from './modules/users/entities/freelancer.entity';
+import { ServiceProvider } from './modules/users/entities/serviceProvider';
+import { PropertyOwner } from './modules/users/entities/propertyOwner.entity';
+import { PropertyRenter } from './modules/users/entities/propertyRenter.entity';
 
 @Module({
   imports: [
@@ -24,7 +28,13 @@ import { UploadModule } from './shared/upload/upload.module';
         username: config.get<string>('DATABASE_USERNAME'),
         password: config.get<string>('DATABASE_PASSWORD'),
         database: config.get<string>('DATABASE_NAME'),
-        entities: [User],
+        entities: [
+          Employer,
+          Freelancer,
+          ServiceProvider,
+          PropertyOwner,
+          PropertyRenter,
+        ],
         synchronize: true,
         ssl:
           config.get<string>('NODE_ENV') !== 'development'
