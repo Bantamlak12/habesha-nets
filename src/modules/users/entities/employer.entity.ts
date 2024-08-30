@@ -54,6 +54,12 @@ export class Employer {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ nullable: true })
+  subscriptionStatus: 'subscribed' | 'unsubscribed';
+
+  @Column({ nullable: true })
+  subscriptionPlan: 'monthly' | 'sixMonth' | 'Yearly' | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

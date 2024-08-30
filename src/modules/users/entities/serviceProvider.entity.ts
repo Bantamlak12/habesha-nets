@@ -50,6 +50,13 @@ export class ServiceProvider {
   @Column({ type: 'text', nullable: true })
   bio: string;
 
+  @Column({ type: 'jsonb', nullable: true })
+  qualifications: {
+    degrees: string[];
+    certifications: string[];
+    trainings: string[];
+  };
+
   @Column({ type: 'int', nullable: true })
   experience: number;
 

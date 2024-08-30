@@ -38,11 +38,15 @@ export class PropertyRenter {
   @Column({ nullable: true })
   profilePicture: string;
 
-  @Column({ nullable: true })
-  location: string; // General location
+  @Column({ type: 'jsonb', nullable: true })
+  location: {
+    city: string;
+    state: string;
+    country: string;
+  };
 
   @Column({ type: 'jsonb', nullable: true })
-  preferredPropertyTypes: string[]; // e.g., House, Apartment
+  preferredPropertyTypes: string[];
 
   @Column({ type: 'jsonb', nullable: true })
   budgetRange: {

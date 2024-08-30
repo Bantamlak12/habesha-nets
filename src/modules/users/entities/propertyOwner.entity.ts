@@ -46,31 +46,37 @@ export class PropertyOwner {
   };
 
   @Column({ nullable: true })
-  propertyType: string; // e.g., House, Apartment, Venue
+  propertyType: string;
 
   @Column({ nullable: true })
-  propertyAddress: string; // Including GPS coordinates or map location
+  propertyAddress: string;
 
   @Column({ type: 'text', nullable: true })
-  propertyDescription: string; // Detailed description including amenities
+  propertyDescription: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  rentalPrice: number; // Monthly or daily rent
+  rentalPrice: number;
 
   @Column({ type: 'jsonb', nullable: true })
-  propertyImages: string[]; // Upload multiple images or videos
+  propertyImages: string[];
 
   @Column({ nullable: true })
-  availabilityDate: Date; // When the property is available for rent
+  availabilityDate: Date;
 
   @Column({ nullable: true })
-  leaseDuration: string; // Short-term, long-term
+  leaseDuration: string;
 
   @Column({ type: 'enum', enum: ['Phone', 'Email', 'SMS'], default: 'Email' })
   preferredContactMethod: 'Phone' | 'Email' | 'SMS';
 
   @Column({ type: 'jsonb', nullable: true })
   languages: string[];
+
+  @Column({ nullable: true })
+  subscriptionStatus: 'subscribed' | 'unsubscribed';
+
+  @Column({ nullable: true })
+  subscriptionPlan: 'monthly' | 'sixMonth' | 'Yearly' | null;
 
   @CreateDateColumn()
   createdAt: Date;
