@@ -10,7 +10,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEmailOrPhone } from 'src/common/is-phone-or-email.validator';
 
 @IsEmailOrPhone()
-export class CreateEmployerDto {
+export class CreateUserDto {
   @IsString()
   @IsIn([
     'employer',
