@@ -3,7 +3,6 @@ import {
   IsOptional,
   IsArray,
   IsEmail,
-  IsPhoneNumber,
   IsEnum,
   IsDecimal,
   ValidateNested,
@@ -30,7 +29,7 @@ export class FreelancerProfileDto {
   email: string;
 
   @IsOptional()
-  @IsPhoneNumber()
+  @IsString()
   @ApiProperty({ example: '+25424545475' })
   phoneNumber: string;
 
@@ -41,6 +40,7 @@ export class FreelancerProfileDto {
   @IsArray()
   @IsString({ each: true })
   @ApiProperty({ example: ['HTML', 'CSS', 'JavaScript'] })
+  @Transform(({ value }) => value.split(',').map((item: string) => item.trim()))
   skills: string[];
 
   @IsOptional()
@@ -61,6 +61,7 @@ export class FreelancerProfileDto {
   @ApiProperty({
     example: ['http://portfolio1.com', 'http://portfolio2.com'],
   })
+  @Transform(({ value }) => value.split(',').map((item: string) => item.trim()))
   portfolioLinks: string[];
 
   @IsOptional()
@@ -82,6 +83,7 @@ export class FreelancerProfileDto {
   @IsArray()
   @IsString({ each: true })
   @ApiProperty({ example: ['English', 'Spanish'] })
+  @Transform(({ value }) => value.split(',').map((item: string) => item.trim()))
   languages: string[];
 
   @IsOptional()

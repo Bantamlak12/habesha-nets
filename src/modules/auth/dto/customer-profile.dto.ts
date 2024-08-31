@@ -37,7 +37,4 @@ export class CustomerProfileDto {
   })
   @ApiProperty({ type: LocationDto })
   location: LocationDto;
-
-  // Reviews given from the service provider
-  // reviews
 }

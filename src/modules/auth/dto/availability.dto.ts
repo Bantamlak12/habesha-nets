@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsString } from 'class-validator';
 
 export class AvailabilityDto {
-  @IsArray()
-  @IsString({ each: true })
-  @ApiProperty({ example: ['Monday', 'Wednesday'] })
+  @IsString()
+  @ApiProperty({ example: 'Monday, Wednesday' })
+  @Transform(({ value }) => value.split(',').map((day: string) => day.trim()))
   days: string[];
 
   @IsString()
