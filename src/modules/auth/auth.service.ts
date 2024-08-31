@@ -82,6 +82,17 @@ export class AuthService {
     return hashedPassword;
   }
 
+  async findUserTypeById(id: string): Promise<string> {
+    const user =
+      (await this.employerRepo.findOne({ where: { id } })) ||
+      (await this.freelancerRepo.findOne({ where: { id } })) ||
+      (await this.serviceProviderRepo.findOne({ where: { id } })) ||
+      (await this.propertyOwnerRepo.findOne({ where: { id } })) ||
+      (await this.propertyRenterRepo.findOne({ where: { id } }));
+
+    return user.userType;
+  }
+
   /****************************************************************************************/
   // APPLICATION RELATED METHODS
   /****************************************************************************************/
@@ -95,6 +106,7 @@ export class AuthService {
       );
       // Create the user and save to the database
       const user = this.employerRepo.create({
+        userType: body.userType,
         email: body.email ?? null,
         phoneNumber: body.phoneNumber ?? null,
         password: hashedPassword,
@@ -109,6 +121,7 @@ export class AuthService {
       );
       // Create the user and save to the database
       const user = this.freelancerRepo.create({
+        userType: body.userType,
         email: body.email ?? null,
         phoneNumber: body.phoneNumber ?? null,
         password: hashedPassword,
@@ -123,6 +136,7 @@ export class AuthService {
       );
       // Create the user and save to the database
       const user = this.serviceProviderRepo.create({
+        userType: body.userType,
         email: body.email ?? null,
         phoneNumber: body.phoneNumber ?? null,
         password: hashedPassword,
@@ -140,6 +154,7 @@ export class AuthService {
       );
       // Create the user and save to the database
       const user = this.propertyOwnerRepo.create({
+        userType: body.userType,
         email: body.email ?? null,
         phoneNumber: body.phoneNumber ?? null,
         password: hashedPassword,
@@ -157,6 +172,7 @@ export class AuthService {
       );
       // Create the user and save to the database
       const user = this.propertyRenterRepo.create({
+        userType: body.userType,
         email: body.email ?? null,
         phoneNumber: body.phoneNumber ?? null,
         password: hashedPassword,
@@ -227,95 +243,104 @@ export class AuthService {
     }
   }
 
-  // async verifyAccount(userId: string, code: string) {
-  //   const user = await this.userRepo.findOne({ where: { id: userId } });
-  //   if (!user) {
-  //     throw new NotFoundException('Employer not found');
-  //   }
+  async verifyAccount(repo: Repository<any>, userId: string, code: string) {
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Employer not found');
+    }
 
-  //   if (user.isVerified) {
-  //     throw new BadRequestException('Account is already verified.');
-  //   }
+    if (user.isVerified) {
+      throw new BadRequestException('Account is already verified.');
+    }
 
-  //   if (user.verificationCode !== code) {
-  //     throw new BadRequestException('Invalid verification code');
-  //   }
+    if (user.verificationCode !== code) {
+      throw new BadRequestException('Invalid verification code');
+    }
 
-  //   if (user.verificationCodeExpires < new Date()) {
-  //     throw new BadRequestException('Verification code has expired');
-  //   }
+    if (user.verificationCodeExpires < new Date()) {
+      throw new BadRequestException('Verification code has expired');
+    }
 
-  //   await this.userRepo.update(userId, {
-  //     isVerified: true,
-  //     verificationCode: null,
-  //     verificationCodeExpires: null,
-  //   });
+    await repo.update(userId, {
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpires: null,
+    });
 
-  //   return true;
-  // }
+    return true;
+  }
 
-  // // ⁡⁢⁣⁣⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
-  // async completeCustomerProfile(
-  //   userId: string,
-  //   body: any,
-  //   profileImg: Express.Multer.File,
-  // ) {
-  //   // Check if the user exists
-  //   const user = await this.userRepo.findOne({ where: { id: userId } });
-  //   if (!user) {
-  //     throw new NotFoundException('Employer not found');
-  //   }
+  // ⁡⁢⁣⁣⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
+  async completeEmployerProfile(
+    repo: Repository<any>,
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Employer not found');
+    }
 
-  //   let profileURL: string | undefined;
-  //   if (profileImg && process.env.NODE_ENV === 'development') {
-  //     profileURL = await this.uploadService.uploadFile(profileImg, 'images');
-  //   } else if (profileImg && process.env.NODE_ENV === 'production') {
-  //     profileURL = await this.uploadService.uploadFileToS3(profileImg);
-  //   }
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
 
-  //   // Update the fields
-  //   const updatedUser = this.userRepo.update(userId, {
-  //     firstName: body.firstName,
-  //     lastName: body.lastName,
-  //     email: body.email,
-  //     phoneNumber: body.phoneNumber,
-  //     profilePicture: profileURL,
-  //     location: body.location,
-  //   });
+    // Update the fields
+    const updatedUser = repo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phoneNumber: body.phoneNumber,
+      companyName: body.companyName,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      location: body.location,
+      description: body.description,
+    });
 
-  //   return updatedUser;
-  // }
+    return updatedUser;
+  }
 
-  // async completeProviderProfile(
-  //   userId: string,
-  //   body: any,
-  //   profileImg: Express.Multer.File,
-  // ) {
-  //   // Check if the user exists
-  //   const user = await this.userRepo.findOne({ where: { id: userId } });
-  //   if (!user) {
-  //     throw new NotFoundException('Employer not found');
-  //   }
+  async completeFreelancerProfile(
+    repo: Repository<any>,
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Employer not found');
+    }
 
-  //   let profileURL: string | undefined;
-  //   if (profileImg && process.env.NODE_ENV === 'development') {
-  //     profileURL = await this.uploadService.uploadFile(profileImg, 'images');
-  //   } else if (profileImg && process.env.NODE_ENV === 'production') {
-  //     profileURL = await this.uploadService.uploadFileToS3(profileImg);
-  //   }
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
 
-  //   // Update the fields
-  //   const updatedUser = this.userRepo.update(userId, {
-  //     firstName: body.firstName,
-  //     lastName: body.lastName,
-  //     email: body.email,
-  //     phoneNumber: body.phoneNumber,
-  //     profilePicture: profileURL,
-  //     location: body.location,
-  //   });
+    // Update the fields
+    const updatedUser = repo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phoneNumber: body.phoneNumber,
+      companyName: body.companyName,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      location: body.location,
+      description: body.description,
+    });
 
-  //   return updatedUser;
-  // }
+    return updatedUser;
+  }
+
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝟰) 𝗥𝗘𝗩𝗜𝗘𝗪 𝗔𝗡𝗗 𝗦𝗨𝗕𝗠𝗜𝗧⁡
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝟱) 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡

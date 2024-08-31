@@ -6,10 +6,28 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+interface Qualifications {
+  degrees: string[];
+  certifications: string[];
+  trainings: string[];
+}
+
+interface Experience {
+  positionn: string;
+  yearsOfExperience: string;
+  responsibilities: string[];
+  company?: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
 @Entity()
 export class Freelancer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column()
+  userType: string;
 
   @Column({ default: false })
   isVerified: boolean;
@@ -38,30 +56,26 @@ export class Freelancer {
   @Column({ nullable: true })
   profilePicture: string;
 
-  @Column()
+  @Column({ nullable: true })
   profession: string;
-
-  @Column()
-  serviceCategory: string;
 
   @Column({ type: 'jsonb', nullable: true })
   skills: string[];
 
   @Column({ type: 'jsonb', nullable: true })
-  portfolio: string[];
+  portfolioLinks: string[];
 
   @Column({ type: 'jsonb', nullable: true })
-  qualifications: {
-    degrees: string[];
-    certifications: string[];
-    trainings: string[];
-  };
+  portfolioFiles: string[];
 
-  @Column({ type: 'int', nullable: true })
-  experience: number;
+  @Column({ type: 'jsonb', nullable: true })
+  qualifications: Qualifications[];
+
+  @Column({ type: 'jsonb', nullable: true })
+  experience: Experience[];
 
   @Column({ type: 'text', nullable: true })
-  bio: string;
+  description: string;
 
   @Column({ type: 'jsonb', nullable: true })
   languages: string[];

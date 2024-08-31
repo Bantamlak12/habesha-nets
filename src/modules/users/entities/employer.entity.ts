@@ -11,6 +11,9 @@ export class Employer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column()
+  userType: string;
+
   @Column({ default: false })
   isVerified: boolean;
 
