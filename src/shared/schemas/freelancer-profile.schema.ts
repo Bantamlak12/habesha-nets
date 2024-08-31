@@ -24,7 +24,11 @@ export const freelancerProfileSchema = {
       },
     },
     profession: { type: 'string', example: 'Web Developer' },
-    skills: { type: 'string', example: ['HTML', 'CSS', 'JavaScript'] },
+    skills: {
+      type: 'array',
+      items: { type: 'string' },
+      example: ['HTML', 'CSS', 'JavaScript'],
+    },
     qualifications: {
       type: 'object',
       properties: {
@@ -37,7 +41,8 @@ export const freelancerProfileSchema = {
       },
     },
     portfolioLinks: {
-      type: 'string',
+      type: 'array',
+      items: { type: 'string' },
       example: ['http://portfolio1.com', 'http://portfolio2.com'],
     },
     portfolioFiles: {
@@ -49,14 +54,41 @@ export const freelancerProfileSchema = {
       type: 'string',
       example: 'A passionate web developer with 5 years of experience...',
     },
+    experience: {
+      type: 'object',
+      properties: {
+        position: { type: 'string', example: 'Software Engineer' },
+        yearsOfExperience: { type: 'string', example: '3 years' },
+        responsibilities: {
+          type: 'string',
+          example: ['Developed web applications', 'Led a team of developers'],
+          company: { type: 'string', example: 'Tech Corp' },
+          startDate: { type: 'string', example: '2020-01-01' },
+          endDate: { type: 'string', example: '2023-01-01' },
+        },
+      },
+    },
     availability: {
       type: 'object',
       properties: {
-        days: { type: 'string', example: ['Monday', 'Wednesday'] },
-        hours: { type: 'string', example: '9 AM - 5 PM' },
+        days: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+          example: ['Monday', 'Wednesday'],
+        },
+        hours: {
+          type: 'string',
+          example: '9 AM - 5 PM',
+        },
       },
     },
-    languages: { type: 'string', example: ['English', 'French'] },
+    languages: {
+      type: 'array',
+      items: { type: 'string' },
+      example: ['English', 'French'],
+    },
     hourlyRate: { type: 'string', example: '3' },
   },
 };
