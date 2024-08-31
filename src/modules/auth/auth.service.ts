@@ -331,11 +331,19 @@ export class AuthService {
       lastName: body.lastName,
       email: body.email,
       phoneNumber: body.phoneNumber,
-      companyName: body.companyName,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
       location: body.location,
+      profession: body.profession,
+      skills: body.skills,
+      qualifications: body.qualification,
+      portfolioLinks: body.portfolioLinks,
+      portfolioFiles: body.portfolioFiles,
       description: body.description,
+      experience: body.experience,
+      availability: body.availability,
+      languages: body.languages,
+      hourlyRate: body.hourlyRate,
     });
 
     return updatedUser;

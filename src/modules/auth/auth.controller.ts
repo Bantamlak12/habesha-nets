@@ -210,22 +210,23 @@ export class AuthController {
     )
     portfolio?: Express.Multer.File,
   ) {
-    const repository = await this.returnRepository(id);
+    console.log(body);
+    // const repository = await this.returnRepository(id);
 
-    let user;
-    if (repository == this.freelancerRepo) {
-      user = await this.authService.completeFreelancerProfile(
-        repository,
-        id,
-        body,
-        portfolio,
-      );
-    }
+    // let user;
+    // if (repository == this.freelancerRepo) {
+    //   user = await this.authService.completeFreelancerProfile(
+    //     repository,
+    //     id,
+    //     body,
+    //     portfolio,
+    //   );
+    // }
 
-    return res.status(HttpStatus.CREATED).json({
-      status: 'success',
-      message: 'You have completed your profile',
-      rowAffected: user.affected,
-    });
+    // return res.status(HttpStatus.CREATED).json({
+    //   status: 'success',
+    //   message: 'You have completed your profile',
+    //   rowAffected: user.affected,
+    // });
   }
 }
