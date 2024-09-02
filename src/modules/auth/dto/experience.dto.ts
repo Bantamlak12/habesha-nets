@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class ExperienceDto {
   @IsString()
@@ -24,10 +24,12 @@ export class ExperienceDto {
   company?: string;
 
   @IsOptional()
+  @IsDateString()
   @ApiProperty({ example: '2020-01-01' })
   startDate?: Date;
 
   @IsOptional()
+  @IsDateString()
   @ApiProperty({ example: '2023-01-01' })
   endDate?: Date;
 }

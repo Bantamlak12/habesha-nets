@@ -40,19 +40,38 @@ export class FreelancerProfileDto {
   @IsArray()
   @IsString({ each: true })
   @ApiProperty({ example: ['HTML', 'CSS', 'JavaScript'] })
-  @Transform(({ value }) => value.split(',').map((item: string) => item.trim()))
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',').map((item: string) => item.trim());
+    }
+    return Array.isArray(value) ? value : undefined;
+  })
   skills: string[];
 
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => QualificationDto)
-  @ApiProperty({ type: [QualificationDto] })
-  qualifications: QualificationDto[];
+  @ApiProperty({ type: QualificationDto })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(QualificationDto, parsedValue);
+    }
+    return value;
+  })
+  qualifications: QualificationDto;
 
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ExperienceDto)
   @ApiProperty({ type: [ExperienceDto] })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(ExperienceDto, parsedValue);
+    }
+    return value;
+  })
   experience: ExperienceDto[];
 
   @IsOptional()
@@ -61,16 +80,21 @@ export class FreelancerProfileDto {
   @ApiProperty({
     example: ['http://portfolio1.com', 'http://portfolio2.com'],
   })
-  @Transform(({ value }) => value.split(',').map((item: string) => item.trim()))
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',').map((item: string) => item.trim());
+    }
+    return Array.isArray(value) ? value : undefined;
+  })
   portfolioLinks: string[];
 
-  @IsOptional()
-  @ApiProperty({
-    type: 'string',
-    format: 'binary',
-    description: 'Portfolio file uploads',
-  })
-  portfolioFiles: any;
+  // @IsOptional()
+  // @ApiProperty({
+  //   type: 'string',
+  //   format: 'binary',
+  //   description: 'Portfolio file uploads',
+  // })
+  // portfolioFiles: any;
 
   @IsOptional()
   @IsString()
@@ -83,13 +107,25 @@ export class FreelancerProfileDto {
   @IsArray()
   @IsString({ each: true })
   @ApiProperty({ example: ['English', 'Spanish'] })
-  @Transform(({ value }) => value.split(',').map((item: string) => item.trim()))
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',').map((item: string) => item.trim());
+    }
+    return Array.isArray(value) ? value : undefined;
+  })
   languages: string[];
 
   @IsOptional()
   @ValidateNested()
   @Type(() => AvailabilityDto)
   @ApiProperty({ type: AvailabilityDto })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(AvailabilityDto, parsedValue);
+    }
+    return value;
+  })
   availability: AvailabilityDto;
 
   @IsOptional()
@@ -102,12 +138,8 @@ export class FreelancerProfileDto {
   @Type(() => LocationDto)
   @Transform(({ value }) => {
     if (typeof value === 'string') {
-      try {
-        const parsedValue = JSON.parse(value);
-        return plainToClass(LocationDto, parsedValue);
-      } catch (error) {
-        throw new Error(`Invalid JSON format for location. ${error}`);
-      }
+      const parsedValue = JSON.parse(value);
+      return plainToClass(LocationDto, parsedValue);
     }
     return value;
   })
