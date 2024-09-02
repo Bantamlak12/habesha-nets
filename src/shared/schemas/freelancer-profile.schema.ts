@@ -32,12 +32,12 @@ export const freelancerProfileSchema = {
     qualifications: {
       type: 'object',
       properties: {
-        degrees: { type: 'string', example: 'BSc in Computer Science' },
-        certifications: {
+        degree: { type: 'string', example: 'BSc in Computer Science' },
+        certification: {
           type: 'string',
           example: 'Certified JavaScript Developer',
         },
-        trainings: { type: 'string', example: 'Advanced React Trainig' },
+        training: { type: 'string', example: 'Advanced React Trainig' },
       },
     },
     portfolioLinks: {
@@ -48,23 +48,27 @@ export const freelancerProfileSchema = {
     portfolioFiles: {
       type: 'string',
       format: 'binary',
-      description: 'portfolio images',
+      description: 'portfolio images/pdf',
     },
     description: {
       type: 'string',
       example: 'A passionate web developer with 5 years of experience...',
     },
     experience: {
-      type: 'object',
-      properties: {
-        position: { type: 'string', example: 'Software Engineer' },
-        yearsOfExperience: { type: 'string', example: '3 years' },
-        responsibilities: {
-          type: 'string',
-          example: ['Developed web applications', 'Led a team of developers'],
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          position: { type: 'string', example: 'Software Engineer' },
+          yearsOfExperience: { type: 'string', example: '3 years' },
+          responsibilities: {
+            type: 'array',
+            items: { type: 'string' },
+            example: ['Developed web applications', 'Led a team of developers'],
+          },
           company: { type: 'string', example: 'Tech Corp' },
-          startDate: { type: 'string', example: '2020-01-01' },
-          endDate: { type: 'string', example: '2023-01-01' },
+          startDate: { type: 'string', format: 'date', example: '2020-01-01' },
+          endDate: { type: 'string', format: 'date', example: '2023-01-01' },
         },
       },
     },
@@ -72,11 +76,8 @@ export const freelancerProfileSchema = {
       type: 'object',
       properties: {
         days: {
-          type: 'array',
-          items: {
-            type: 'string',
-          },
-          example: ['Monday', 'Wednesday'],
+          type: 'string',
+          example: 'Monday, Wednesday',
         },
         hours: {
           type: 'string',
