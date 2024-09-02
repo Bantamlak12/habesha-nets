@@ -33,11 +33,19 @@ export const freelancerProfileSchema = {
       type: 'object',
       properties: {
         degree: { type: 'string', example: 'BSc in Computer Science' },
-        certification: {
-          type: 'string',
-          example: 'Certified JavaScript Developer',
+        certifications: {
+          type: 'array',
+          items: { type: 'string' },
+          example: [
+            'Certified JavaScript Developer',
+            'Certified Python Developer',
+          ],
         },
-        training: { type: 'string', example: 'Advanced React Trainig' },
+        trainings: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Advanced React Trainig', 'Advanced Odoo Trainig'],
+        },
       },
     },
     portfolioLinks: {
