@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 
 interface Qualifications {
-  degrees: string[];
+  degree: string;
   certifications: string[];
   trainings: string[];
 }
@@ -69,7 +69,7 @@ export class Freelancer {
   portfolioFiles: string[];
 
   @Column({ type: 'jsonb', nullable: true })
-  qualifications: Qualifications[];
+  qualifications: Qualifications;
 
   @Column({ type: 'jsonb', nullable: true })
   experience: Experience[];
