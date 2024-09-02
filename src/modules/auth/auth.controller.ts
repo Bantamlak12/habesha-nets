@@ -11,6 +11,7 @@ import {
   Post,
   Response,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import { Response as ExpressResponse } from 'express';
@@ -26,7 +27,11 @@ import { EmployerProfileDto } from './dto/employer-profile.dto';
 import { FreelancerProfileDto } from './dto/freelancer-profile.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthService } from './auth.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Employer } from '../users/entities/employer.entity';
@@ -208,25 +213,22 @@ export class AuthController {
         fileIsRequired: false,
       }),
     )
-    portfolio?: Express.Multer.File,
+    profilePicture?: Express.Multer.File,
   ) {
-    console.log(body);
-    // const repository = await this.returnRepository(id);
-
-    // let user;
-    // if (repository == this.freelancerRepo) {
-    //   user = await this.authService.completeFreelancerProfile(
-    //     repository,
-    //     id,
-    //     body,
-    //     portfolio,
-    //   );
-    // }
-
-    // return res.status(HttpStatus.CREATED).json({
-    //   status: 'success',
-    //   message: 'You have completed your profile',
-    //   rowAffected: user.affected,
-    // });
+    const repository = await this.returnRepository(id);
+    let user;
+    if (repository == this.freelancerRepo) {
+      user = await this.authService.completeFreelancerProfile(
+        repository,
+        id,
+        body,
+        profilePicture,
+      );
+    }
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
   }
 }
