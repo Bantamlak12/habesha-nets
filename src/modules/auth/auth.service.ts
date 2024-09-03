@@ -8,6 +8,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly propertyOwnerRepo: Repository<PropertyOwner>,
     @InjectRepository(PropertyRenter)
     private readonly propertyRenterRepo: Repository<PropertyRenter>,
+    private readonly jwtService: JwtService,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
     private readonly uploadService: UploadService,
@@ -82,6 +84,37 @@ export class AuthService {
     return hashedPassword;
   }
 
+  generateVerificationToken(user: any) {
+    const payload = { userId: user.id };
+    return this.jwtService.sign(payload, {
+      expiresIn: '30m',
+    });
+  }
+
+  // decodeVerificationToken(token: string) {
+  //   if (!token) {
+  //     throw new Error('Token is either expired or invalid');
+  //   }
+  //   const payload = this.jwtService.verify(token);
+  //   return payload.userId;
+  // }
+
+  generateAccessToken(user: any) {
+    const payload = { sub: user.id, userType: user.userType };
+    return this.jwtService.sign(payload);
+  }
+
+  generateRefreshToken(user: any) {
+    const payload = {
+      sub: user.id,
+      userType: user.userType,
+      isVerified: user.isVerified,
+    };
+    return this.jwtService.sign(payload, {
+      expiresIn: '7d',
+    });
+  }
+
   async findUserTypeById(id: string): Promise<string> {
     const user =
       (await this.employerRepo.findOne({ where: { id } })) ||
@@ -112,8 +145,8 @@ export class AuthService {
         password: hashedPassword,
       });
       await this.employerRepo.save(user);
-      await this.generateAndSendVerificationCode(this.employerRepo, user.id);
-      return user.id;
+      // await this.generateAndSendVerificationCode(this.employerRepo, user.id);
+      return user;
     } else if (body.userType === 'freelancer') {
       const hashedPassword = await this.validateAndHash(
         this.freelancerRepo,
@@ -128,7 +161,7 @@ export class AuthService {
       });
       await this.freelancerRepo.save(user);
       await this.generateAndSendVerificationCode(this.freelancerRepo, user.id);
-      return user.id;
+      return user;
     } else if (body.userType === 'serviceProvider') {
       const hashedPassword = await this.validateAndHash(
         this.serviceProviderRepo,
@@ -146,7 +179,7 @@ export class AuthService {
         this.serviceProviderRepo,
         user.id,
       );
-      return user.id;
+      return user;
     } else if (body.userType === 'propertyOwner') {
       const hashedPassword = await this.validateAndHash(
         this.propertyOwnerRepo,
@@ -164,7 +197,7 @@ export class AuthService {
         this.propertyOwnerRepo,
         user.id,
       );
-      return user.id;
+      return user;
     } else if (body.userType === 'propertyRenter') {
       const hashedPassword = await this.validateAndHash(
         this.propertyRenterRepo,
@@ -182,7 +215,7 @@ export class AuthService {
         this.propertyRenterRepo,
         user.id,
       );
-      return user.id;
+      return user;
     } else {
       return false;
     }

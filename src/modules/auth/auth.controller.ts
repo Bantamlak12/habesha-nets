@@ -6,16 +6,19 @@ import {
   HttpStatus,
   MaxFileSizeValidator,
   NotFoundException,
-  Param,
   ParseFilePipe,
   Post,
   Response,
+  Request,
   UploadedFile,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { Response as ExpressResponse } from 'express';
+import { Request as ExpressRequest } from 'express';
 import {
+  ApiBearerAuth,
   ApiBody,
   ApiConsumes,
   ApiOperation,
@@ -41,6 +44,7 @@ import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schema';
 import { freelancerProfileSchema } from 'src/shared/schemas/freelancer-profile.schema';
+import { VerificationGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -100,25 +104,32 @@ export class AuthController {
     @Body() body: CreateUserDto,
     @Response() res: ExpressResponse,
   ) {
-    const userId = await this.authService.signup(body);
+    // 1) Register the user and get the user
+    const user = await this.authService.signup(body);
+
+    // 2) Generate verification token
+    const verificationToken = this.authService.generateVerificationToken(user);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       message: 'Verify your account to complete your registration.',
-      userId: userId,
+      verificationToken,
     });
   }
 
   // SEND VERIFICATION CODE TO THE REGISTERED USER
-  @Post('send-verification/:id')
+  @Post('send-verification')
+  @UseGuards(VerificationGuard)
+  @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary: 'This endpoint is used to send a verification code.',
   })
   @ApiResponse({ status: 200 })
   async sendVerification(
-    @Param('id') id: string,
     @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
   ) {
+    const id = req.user['userId'];
     const repository = await this.returnRepository(id);
     await this.authService.generateAndSendVerificationCode(repository, id);
 
@@ -129,16 +140,17 @@ export class AuthController {
   }
 
   // VERIFY THE REGISTERED USER
-  @Post('verify/:id')
+  @Post('verify')
   @ApiOperation({
     summary: 'This endpoint is used to verify the account with the code sent.',
   })
   @ApiResponse({ status: 200 })
   async verifyAccount(
-    @Param('id') id: string,
     @Body() body: VerificationCodeDto,
     @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
   ) {
+    const id = req.user['userId'];
     const repository = await this.returnRepository(id);
     await this.authService.verifyAccount(repository, id, body.verificationCode);
 
@@ -149,7 +161,7 @@ export class AuthController {
   }
 
   // COMPLETE EMPLOYER PROFILE
-  @Post('complete-employer-profile/:id')
+  @Post('complete-employer-profile')
   @UseInterceptors(FileInterceptor('profilePicture'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -158,7 +170,6 @@ export class AuthController {
   @ApiBody({ schema: employerProfileSchema })
   @ApiResponse({ status: 201 })
   async completeEmployerProfile(
-    @Param('id') id: string,
     @Body() body: EmployerProfileDto,
     @Response() res: ExpressResponse,
     @UploadedFile(
@@ -172,9 +183,10 @@ export class AuthController {
     )
     file?: Express.Multer.File,
   ) {
+    const id = '5';
     const repository = await this.returnRepository(id);
 
-    let user;
+    let user: any;
     if (repository == this.employerRepo) {
       user = await this.authService.completeEmployerProfile(
         repository,
@@ -192,7 +204,7 @@ export class AuthController {
   }
 
   // COMPLETE PROFESSIONAL FREELANCERS PROFILES
-  @Post('complete-freelancer-profile/:id')
+  @Post('complete-freelancer-profile')
   @UseInterceptors(FileInterceptor('profilePicture'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -201,7 +213,6 @@ export class AuthController {
   @ApiBody({ schema: freelancerProfileSchema })
   @ApiResponse({ status: 201 })
   async completeFreelancerProfile(
-    @Param('id') id: string,
     @Body() body: FreelancerProfileDto,
     @Response() res: ExpressResponse,
     @UploadedFile(
@@ -215,8 +226,9 @@ export class AuthController {
     )
     profilePicture?: Express.Multer.File,
   ) {
+    const id = '5';
     const repository = await this.returnRepository(id);
-    let user;
+    let user: any;
     if (repository == this.freelancerRepo) {
       user = await this.authService.completeFreelancerProfile(
         repository,

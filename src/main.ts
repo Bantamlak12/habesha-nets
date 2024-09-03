@@ -19,6 +19,14 @@ async function bootstrap() {
     .setTitle('Habesha Nets Backend')
     .setDescription('The habesha nets APIs description.')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'Authorization',
+    )
     .addTag('Habesha Nets Backend APIs')
     .build();
   const document = SwaggerModule.createDocument(app, config);
