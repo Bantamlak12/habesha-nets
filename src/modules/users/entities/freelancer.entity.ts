@@ -1,10 +1,5 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { User } from './users.entity';
 
 interface Qualifications {
   degree: string;
@@ -22,40 +17,7 @@ interface Experience {
 }
 
 @Entity()
-export class Freelancer {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column()
-  userType: string;
-
-  @Column({ default: false })
-  isVerified: boolean;
-
-  @Column({ nullable: true })
-  verificationCode: string;
-
-  @Column({ nullable: true })
-  verificationCodeExpires: Date;
-
-  @Column({ nullable: true })
-  firstName: string;
-
-  @Column({ nullable: true })
-  lastName: string;
-
-  @Column({ unique: true, nullable: true })
-  email: string;
-
-  @Column({ unique: true, nullable: true })
-  phoneNumber: string;
-
-  @Column()
-  password: string;
-
-  @Column({ nullable: true })
-  profilePicture: string;
-
+export class Freelancer extends User {
   @Column({ nullable: true })
   profession: string;
 
@@ -74,9 +36,6 @@ export class Freelancer {
   @Column({ type: 'jsonb', nullable: true })
   experience: Experience[];
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
-
   @Column({ type: 'jsonb', nullable: true })
   languages: string[];
 
@@ -88,16 +47,6 @@ export class Freelancer {
 
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   hourlyRate: number;
-
-  @Column({ type: 'jsonb', nullable: true })
-  location: {
-    city: string;
-    state: string;
-    country: string;
-  };
-
-  @Column({ type: 'enum', enum: ['Phone', 'Email', 'SMS'], default: 'Email' })
-  preferredContactMethod: 'Phone' | 'Email' | 'SMS';
 
   @CreateDateColumn()
   createdAt: Date;
