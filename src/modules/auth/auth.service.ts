@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,10 +19,14 @@ import { Freelancer } from '../users/entities/freelancer.entity';
 import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { User } from '../users/entities/users.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
     @InjectRepository(Freelancer)
@@ -32,6 +37,8 @@ export class AuthService {
     private readonly propertyOwnerRepo: Repository<PropertyOwner>,
     @InjectRepository(PropertyRenter)
     private readonly propertyRenterRepo: Repository<PropertyRenter>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly jwtService: JwtService,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
@@ -60,7 +67,7 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async validateAndHash(repo: Repository<any>, body: any) {
+  async validateUser(repo: Repository<any>, body: any) {
     // Validate that email or phone number is not already in use
     const existingUser = await repo.findOne({
       where: [{ email: body.email }, { phoneNumber: body.phoneNumber }],
@@ -74,45 +81,45 @@ export class AuthService {
         throw new ConflictException('Phone number is in use.');
       }
     }
-
-    // Check if the password and confirmPassword do match
-    const hashedPassword = await this.hashPassword(
-      body.password,
-      body.confirmPassword,
-    );
-
-    return hashedPassword;
   }
 
   generateVerificationToken(user: any) {
     const payload = { userId: user.id };
     return this.jwtService.sign(payload, {
-      expiresIn: '30m',
+      expiresIn: '24h',
     });
   }
 
-  // decodeVerificationToken(token: string) {
-  //   if (!token) {
-  //     throw new Error('Token is either expired or invalid');
-  //   }
-  //   const payload = this.jwtService.verify(token);
-  //   return payload.userId;
-  // }
-
   generateAccessToken(user: any) {
-    const payload = { sub: user.id, userType: user.userType };
-    return this.jwtService.sign(payload);
+    const payload = { userId: user.id, userType: user.userType };
+    return this.jwtService.sign(payload, {
+      expiresIn: '15m',
+    });
   }
 
-  generateRefreshToken(user: any) {
+  async generateRefreshToken(user: any) {
     const payload = {
-      sub: user.id,
+      userId: user.id,
       userType: user.userType,
       isVerified: user.isVerified,
     };
-    return this.jwtService.sign(payload, {
-      expiresIn: '7d',
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: '30d',
     });
+
+    const currentDate = new Date();
+    const expiresAt = new Date(currentDate);
+    expiresAt.setMonth(currentDate.getMonth() + 1);
+
+    const refreshTokenRecord = this.refreshTokenRepo.create({
+      userId: user.id,
+      token: refreshToken,
+      userType: user.userType,
+      expiresAt: expiresAt,
+    });
+    await this.refreshTokenRepo.save(refreshTokenRecord);
+
+    return refreshToken;
   }
 
   async findUserTypeById(id: string): Promise<string> {
@@ -126,6 +133,35 @@ export class AuthService {
     return user.userType;
   }
 
+  async findUserByEmailOrPhone(email: string, phoneNumber: string) {
+    let user: any;
+
+    user = await this.employerRepo.findOne({
+      where: [{ email }, { phoneNumber }],
+    });
+    if (user) return user;
+
+    user = await this.freelancerRepo.findOne({
+      where: [{ email }, { phoneNumber }],
+    });
+    if (user) return user;
+
+    user = await this.serviceProviderRepo.findOne({
+      where: [{ email }, { phoneNumber }],
+    });
+    if (user) return user;
+
+    user = await this.propertyOwnerRepo.findOne({
+      where: [{ email }, { phoneNumber }],
+    });
+    if (user) return user;
+
+    user = await this.propertyRenterRepo.findOne({
+      where: [{ email }, { phoneNumber }],
+    });
+    if (user) return user;
+  }
+
   /****************************************************************************************/
   // APPLICATION RELATED METHODS
   /****************************************************************************************/
@@ -133,9 +169,9 @@ export class AuthService {
   // ⁡⁢⁢⁢𝟭) 𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
   async signup(body: any) {
     if (body.userType === 'employer') {
-      const hashedPassword = await this.validateAndHash(
-        this.employerRepo,
-        body,
+      const hashedPassword = await this.hashPassword(
+        body.password,
+        body.confirmPassword,
       );
       // Create the user and save to the database
       const user = this.employerRepo.create({
@@ -148,9 +184,9 @@ export class AuthService {
       // await this.generateAndSendVerificationCode(this.employerRepo, user.id);
       return user;
     } else if (body.userType === 'freelancer') {
-      const hashedPassword = await this.validateAndHash(
-        this.freelancerRepo,
-        body,
+      const hashedPassword = await this.hashPassword(
+        body.password,
+        body.confirmPassword,
       );
       // Create the user and save to the database
       const user = this.freelancerRepo.create({
@@ -163,9 +199,9 @@ export class AuthService {
       await this.generateAndSendVerificationCode(this.freelancerRepo, user.id);
       return user;
     } else if (body.userType === 'serviceProvider') {
-      const hashedPassword = await this.validateAndHash(
-        this.serviceProviderRepo,
-        body,
+      const hashedPassword = await this.hashPassword(
+        body.password,
+        body.confirmPassword,
       );
       // Create the user and save to the database
       const user = this.serviceProviderRepo.create({
@@ -181,9 +217,9 @@ export class AuthService {
       );
       return user;
     } else if (body.userType === 'propertyOwner') {
-      const hashedPassword = await this.validateAndHash(
-        this.propertyOwnerRepo,
-        body,
+      const hashedPassword = await this.hashPassword(
+        body.password,
+        body.confirmPassword,
       );
       // Create the user and save to the database
       const user = this.propertyOwnerRepo.create({
@@ -199,9 +235,9 @@ export class AuthService {
       );
       return user;
     } else if (body.userType === 'propertyRenter') {
-      const hashedPassword = await this.validateAndHash(
-        this.propertyRenterRepo,
-        body,
+      const hashedPassword = await this.hashPassword(
+        body.password,
+        body.confirmPassword,
       );
       // Create the user and save to the database
       const user = this.propertyRenterRepo.create({
@@ -303,7 +339,37 @@ export class AuthService {
     return true;
   }
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
+  // ⁡⁢⁢⁢⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
+  async signInUser(body: any) {
+    // 1) Check if the user exists
+    const user = await this.findUserByEmailOrPhone(
+      body.email,
+      body.phoneNumber,
+    );
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // 2) Validate the password
+    const isPasswordValid = await bcrypt.compare(body.password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Generate JWT tokens and return
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
+
+    await this.refreshTokenRepo.update(user.id, { token: refreshToken });
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  // ⁡⁢⁣⁣⁡⁢⁢⁢𝟰) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
   async completeEmployerProfile(
     repo: Repository<any>,
     userId: string,
@@ -382,9 +448,9 @@ export class AuthService {
     return updatedUser;
   }
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢𝟰) 𝗥𝗘𝗩𝗜𝗘𝗪 𝗔𝗡𝗗 𝗦𝗨𝗕𝗠𝗜𝗧⁡
+  // ⁡⁢⁢⁢⁡⁢⁢⁢5) 𝗥𝗘𝗩𝗜𝗘𝗪 𝗔𝗡𝗗 𝗦𝗨𝗕𝗠𝗜𝗧⁡
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢𝟱) 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+  // ⁡⁢⁣⁣⁡⁢⁢⁢6) 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
 
-  // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝟲) 𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
+  // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢7) 𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
 }
