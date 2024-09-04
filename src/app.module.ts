@@ -12,6 +12,8 @@ import { Freelancer } from './modules/users/entities/freelancer.entity';
 import { ServiceProvider } from './modules/users/entities/serviceProvider.entity';
 import { PropertyOwner } from './modules/users/entities/propertyOwner.entity';
 import { PropertyRenter } from './modules/users/entities/propertyRenter.entity';
+import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
+import { User } from './modules/users/entities/users.entity';
 
 @Module({
   imports: [
@@ -29,11 +31,13 @@ import { PropertyRenter } from './modules/users/entities/propertyRenter.entity';
         password: config.get<string>('DATABASE_PASSWORD'),
         database: config.get<string>('DATABASE_NAME'),
         entities: [
+          User,
           Employer,
           Freelancer,
           ServiceProvider,
           PropertyOwner,
           PropertyRenter,
+          RefreshToken,
         ],
         synchronize: true,
         ssl:
