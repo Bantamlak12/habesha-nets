@@ -45,12 +45,16 @@ import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schema';
 import { freelancerProfileSchema } from 'src/shared/schemas/freelancer-profile.schema';
 import { VerificationGuard } from './guards/jwt-auth.guard';
+import { LoginDto } from './dto/signin-user.dto';
+import { User } from '../users/entities/users.entity';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
     @InjectRepository(Freelancer)
@@ -104,12 +108,20 @@ export class AuthController {
     @Body() body: CreateUserDto,
     @Response() res: ExpressResponse,
   ) {
-    // 1) Register the user and get the user
+    // 1) Check if the user exists
+    await this.authService.validateUser(this.employerRepo, body);
+    await this.authService.validateUser(this.freelancerRepo, body);
+    await this.authService.validateUser(this.serviceProviderRepo, body);
+    await this.authService.validateUser(this.propertyOwnerRepo, body);
+    await this.authService.validateUser(this.propertyRenterRepo, body);
+
+    // 2) Register the user and get the user
     const user = await this.authService.signup(body);
 
-    // 2) Generate verification token
+    // 3) Generate verification token
     const verificationToken = this.authService.generateVerificationToken(user);
 
+    // 4) Send response
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       message: 'Verify your account to complete your registration.',
@@ -141,6 +153,8 @@ export class AuthController {
 
   // VERIFY THE REGISTERED USER
   @Post('verify')
+  @UseGuards(VerificationGuard)
+  @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary: 'This endpoint is used to verify the account with the code sent.',
   })
@@ -153,10 +167,25 @@ export class AuthController {
     const id = req.user['userId'];
     const repository = await this.returnRepository(id);
     await this.authService.verifyAccount(repository, id, body.verificationCode);
-
     return res.status(HttpStatus.OK).json({
       status: 'success',
       message: 'Your account is verified',
+    });
+  }
+
+  @Post('signin')
+  @ApiOperation({
+    summary: 'This endpoint is used to sign in a user.',
+  })
+  @ApiResponse({ status: 200 })
+  async login(@Body() body: LoginDto, @Response() res: ExpressResponse) {
+    const tokens = await this.authService.signInUser(body);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'You are successfully logged in.',
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     });
   }
 
