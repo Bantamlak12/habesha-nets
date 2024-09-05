@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
-export class VerificationGuard implements CanActivate {
+export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -21,11 +21,23 @@ export class VerificationGuard implements CanActivate {
     const token = authorizationHeader.split(' ')[1];
 
     try {
-      const decoded = this.jwtService.verify(token);
+      const decoded = await this.jwtService.verifyAsync(token);
       request.user = decoded;
-      return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+
+    // If the user is not verified, restrict access to specific routes
+    if (!request.user.isVerfied && !this.isVerificationRoute(request)) {
+      throw new UnauthorizedException('User is not verified yet');
+    }
+
+    return true;
+  }
+
+  private isVerificationRoute(request: any): boolean {
+    const path = request.url;
+    const verificationEndPoints = ['/send-verification', '/verify'];
+    return verificationEndPoints.some((endpoint) => path.includes(endpoint));
   }
 }
