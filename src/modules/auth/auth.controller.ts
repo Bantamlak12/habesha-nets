@@ -44,9 +44,10 @@ import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schema';
 import { freelancerProfileSchema } from 'src/shared/schemas/freelancer-profile.schema';
-import { VerificationGuard } from './guards/jwt-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/signin-user.dto';
 import { User } from '../users/entities/users.entity';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -109,11 +110,11 @@ export class AuthController {
     @Response() res: ExpressResponse,
   ) {
     // 1) Check if the user exists
-    await this.authService.validateUser(this.employerRepo, body);
-    await this.authService.validateUser(this.freelancerRepo, body);
-    await this.authService.validateUser(this.serviceProviderRepo, body);
-    await this.authService.validateUser(this.propertyOwnerRepo, body);
-    await this.authService.validateUser(this.propertyRenterRepo, body);
+    await this.authService.checkUser(this.employerRepo, body);
+    await this.authService.checkUser(this.freelancerRepo, body);
+    await this.authService.checkUser(this.serviceProviderRepo, body);
+    await this.authService.checkUser(this.propertyOwnerRepo, body);
+    await this.authService.checkUser(this.propertyRenterRepo, body);
 
     // 2) Register the user and get the user
     const user = await this.authService.signup(body);
@@ -131,7 +132,7 @@ export class AuthController {
 
   // SEND VERIFICATION CODE TO THE REGISTERED USER
   @Post('send-verification')
-  @UseGuards(VerificationGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary: 'This endpoint is used to send a verification code.',
@@ -141,7 +142,7 @@ export class AuthController {
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
   ) {
-    const id = req.user['userId'];
+    const id = req.user['sub'];
     const repository = await this.returnRepository(id);
     await this.authService.generateAndSendVerificationCode(repository, id);
 
@@ -153,7 +154,7 @@ export class AuthController {
 
   // VERIFY THE REGISTERED USER
   @Post('verify')
-  @UseGuards(VerificationGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary: 'This endpoint is used to verify the account with the code sent.',
@@ -164,7 +165,7 @@ export class AuthController {
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
   ) {
-    const id = req.user['userId'];
+    const id = req.user['sub'];
     const repository = await this.returnRepository(id);
     await this.authService.verifyAccount(repository, id, body.verificationCode);
     return res.status(HttpStatus.OK).json({
@@ -174,16 +175,22 @@ export class AuthController {
   }
 
   @Post('signin')
+  @UseGuards(AuthGuard('local'))
   @ApiOperation({
     summary: 'This endpoint is used to sign in a user.',
   })
   @ApiResponse({ status: 200 })
-  async login(@Body() body: LoginDto, @Response() res: ExpressResponse) {
-    const tokens = await this.authService.signInUser(body);
+  async login(
+    @Body() body: LoginDto,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const user = req.user;
+    const tokens = await this.authService.signInUser(user);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      message: 'You are successfully logged in.',
+      message: 'You are successfully signed in.',
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
     });
@@ -191,6 +198,8 @@ export class AuthController {
 
   // COMPLETE EMPLOYER PROFILE
   @Post('complete-employer-profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
   @UseInterceptors(FileInterceptor('profilePicture'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -200,6 +209,7 @@ export class AuthController {
   @ApiResponse({ status: 201 })
   async completeEmployerProfile(
     @Body() body: EmployerProfileDto,
+    @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
     @UploadedFile(
       new ParseFilePipe({
@@ -212,7 +222,7 @@ export class AuthController {
     )
     file?: Express.Multer.File,
   ) {
-    const id = '5';
+    const id = req.user['sub'];
     const repository = await this.returnRepository(id);
 
     let user: any;

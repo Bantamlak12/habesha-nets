@@ -21,6 +21,7 @@ import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
+import { userInfo } from 'os';
 
 @Injectable()
 export class AuthService {
@@ -67,8 +68,24 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async validateUser(repo: Repository<any>, body: any) {
-    // Validate that email or phone number is not already in use
+  async validateUser(emailOrPhone: string, password: string) {
+    const user = await this.findUserByEmailOrPhone(emailOrPhone, emailOrPhone);
+
+    if (!user) {
+      return null;
+    }
+
+    // 2) Validate the password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return user;
+  }
+
+  async checkUser(repo: Repository<any>, body: any) {
+    // Check if email or phone number is not already in use
     const existingUser = await repo.findOne({
       where: [{ email: body.email }, { phoneNumber: body.phoneNumber }],
     });
@@ -84,14 +101,22 @@ export class AuthService {
   }
 
   generateVerificationToken(user: any) {
-    const payload = { userId: user.id };
+    const payload = {
+      sub: user.id,
+      userType: user.userType,
+      isVerfied: false,
+    };
     return this.jwtService.sign(payload, {
       expiresIn: '24h',
     });
   }
 
   generateAccessToken(user: any) {
-    const payload = { userId: user.id, userType: user.userType };
+    const payload = {
+      sub: user.id,
+      userType: user.userType,
+      isVerfied: true,
+    };
     return this.jwtService.sign(payload, {
       expiresIn: '15m',
     });
@@ -99,7 +124,7 @@ export class AuthService {
 
   async generateRefreshToken(user: any) {
     const payload = {
-      userId: user.id,
+      sub: user.id,
       userType: user.userType,
       isVerified: user.isVerified,
     };
@@ -111,13 +136,25 @@ export class AuthService {
     const expiresAt = new Date(currentDate);
     expiresAt.setMonth(currentDate.getMonth() + 1);
 
-    const refreshTokenRecord = this.refreshTokenRepo.create({
-      userId: user.id,
-      token: refreshToken,
-      userType: user.userType,
-      expiresAt: expiresAt,
+    // check if there is exisitng token
+    const existingToken = await this.refreshTokenRepo.findOne({
+      where: { userId: user.id },
     });
-    await this.refreshTokenRepo.save(refreshTokenRecord);
+
+    if (existingToken) {
+      // Update the existing token
+      existingToken.token = refreshToken;
+      existingToken.expiresAt = expiresAt;
+      await this.refreshTokenRepo.save(existingToken);
+    } else {
+      const refreshTokenRecord = this.refreshTokenRepo.create({
+        userId: user.id,
+        token: refreshToken,
+        userType: user.userType,
+        expiresAt: expiresAt,
+      });
+      await this.refreshTokenRepo.save(refreshTokenRecord);
+    }
 
     return refreshToken;
   }
@@ -267,8 +304,13 @@ export class AuthService {
       where: { id: userId },
     });
 
+    // Check if the account is verified
+    if (user.isVerified) {
+      throw new UnauthorizedException('Account is already verified');
+    }
+
     if (!user) {
-      throw new NotFoundException('Employer not found');
+      throw new NotFoundException('User not found');
     }
 
     const verificationCode = this.generateRandomSixDigit();
@@ -319,7 +361,7 @@ export class AuthService {
     }
 
     if (user.isVerified) {
-      throw new BadRequestException('Account is already verified.');
+      throw new UnauthorizedException('Account is already verified');
     }
 
     if (user.verificationCode !== code) {
@@ -340,33 +382,12 @@ export class AuthService {
   }
 
   // ⁡⁢⁢⁢⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
-  async signInUser(body: any) {
-    // 1) Check if the user exists
-    const user = await this.findUserByEmailOrPhone(
-      body.email,
-      body.phoneNumber,
-    );
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    // 2) Validate the password
-    const isPasswordValid = await bcrypt.compare(body.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
+  async signInUser(user: any) {
     // Generate JWT tokens and return
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user);
 
-    await this.refreshTokenRepo.update(user.id, { token: refreshToken });
-
-    return {
-      accessToken,
-      refreshToken,
-    };
+    return { accessToken, refreshToken };
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝟰) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
