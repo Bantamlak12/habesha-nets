@@ -129,7 +129,7 @@ export class AuthService {
       isVerified: user.isVerified,
     };
     const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: '30d',
+      expiresIn: '7d',
     });
 
     const currentDate = new Date();

@@ -15,7 +15,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { Response as ExpressResponse } from 'express';
+import { CookieOptions, Response as ExpressResponse } from 'express';
 import { Request as ExpressRequest } from 'express';
 import {
   ApiBearerAuth,
@@ -125,6 +125,7 @@ export class AuthController {
     // 4) Send response
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
+      statusCode: 201,
       message: 'Verify your account to complete your registration.',
       verificationToken,
     });
@@ -148,6 +149,7 @@ export class AuthController {
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
+      statusCode: 200,
       message: 'Verification code sent',
     });
   }
@@ -170,6 +172,7 @@ export class AuthController {
     await this.authService.verifyAccount(repository, id, body.verificationCode);
     return res.status(HttpStatus.OK).json({
       status: 'success',
+      statusCode: 200,
       message: 'Your account is verified',
     });
   }
@@ -188,11 +191,20 @@ export class AuthController {
     const user = req.user;
     const tokens = await this.authService.signInUser(user);
 
+    const cookieOptions: CookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+
+    res.cookie('jwt', tokens.refreshToken, cookieOptions);
+
     return res.status(HttpStatus.OK).json({
       status: 'success',
+      statusCode: 200,
       message: 'You are successfully signed in.',
       accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
     });
   }
 
@@ -237,6 +249,7 @@ export class AuthController {
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
+      statusCode: 201,
       message: 'You have completed your profile',
       rowAffected: user.affected,
     });
@@ -278,6 +291,7 @@ export class AuthController {
     }
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
+      statusCode: 201,
       message: 'You have completed your profile',
       rowAffected: user.affected,
     });
