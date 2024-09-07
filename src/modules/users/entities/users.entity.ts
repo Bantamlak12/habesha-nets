@@ -23,16 +23,19 @@ export abstract class User {
   @Column({ nullable: true })
   verificationCodeExpires: Date;
 
+  @Column({ default: false })
+  profileActivated: boolean;
+
   @Column({ nullable: true })
   firstName: string;
 
   @Column({ nullable: true })
   lastName: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: true })
   email: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: true })
   phoneNumber: string;
 
   @Column()
@@ -54,9 +57,15 @@ export abstract class User {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ nullable: true })
+  @Column({ default: 'unsubscribed' })
   subscriptionStatus: 'subscribed' | 'unsubscribed';
 
-  @Column({ nullable: true })
-  subscriptionPlan: 'monthly' | 'sixMonth' | 'Yearly' | null;
+  @Column({ default: 'no-plan' })
+  subscriptionPlan: 'per-post | monthly' | 'six-month' | 'Yearly';
+
+  @Column({ type: 'int', nullable: true })
+  ratings: number;
+
+  @Column({ type: 'jsonb', nullable: true })
+  reviews: string[];
 }

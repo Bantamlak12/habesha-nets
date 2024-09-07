@@ -14,6 +14,11 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    if (user.isVerfied === false) {
+      throw new UnauthorizedException('You must be verified to sign in.');
+    }
+
     return user;
   }
 }

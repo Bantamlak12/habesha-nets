@@ -14,6 +14,7 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  Patch,
 } from '@nestjs/common';
 import { CookieOptions, Response as ExpressResponse } from 'express';
 import { Request as ExpressRequest } from 'express';
@@ -38,7 +39,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Employer } from '../users/entities/employer.entity';
-import { Freelancer } from '../users/entities/freelancer.entity';
 import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
@@ -58,8 +58,6 @@ export class AuthController {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
-    @InjectRepository(Freelancer)
-    private readonly freelancerRepo: Repository<Freelancer>,
     @InjectRepository(ServiceProvider)
     private readonly serviceProviderRepo: Repository<ServiceProvider>,
     @InjectRepository(PropertyOwner)
@@ -78,9 +76,6 @@ export class AuthController {
     switch (userType) {
       case 'employer':
         repository = this.employerRepo;
-        break;
-      case 'freelancer':
-        repository = this.freelancerRepo;
         break;
       case 'serviceProvider':
         repository = this.serviceProviderRepo;
@@ -111,7 +106,6 @@ export class AuthController {
   ) {
     // 1) Check if the user exists
     await this.authService.checkUser(this.employerRepo, body);
-    await this.authService.checkUser(this.freelancerRepo, body);
     await this.authService.checkUser(this.serviceProviderRepo, body);
     await this.authService.checkUser(this.propertyOwnerRepo, body);
     await this.authService.checkUser(this.propertyRenterRepo, body);
@@ -198,7 +192,7 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
 
-    res.cookie('jwt', tokens.refreshToken, cookieOptions);
+    res.cookie('rft', tokens.refreshToken, cookieOptions);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
@@ -209,7 +203,7 @@ export class AuthController {
   }
 
   // COMPLETE EMPLOYER PROFILE
-  @Post('complete-employer-profile')
+  @Patch('complete-employer-profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @UseInterceptors(FileInterceptor('profilePicture'))
@@ -278,22 +272,22 @@ export class AuthController {
     )
     profilePicture?: Express.Multer.File,
   ) {
-    const id = '5';
-    const repository = await this.returnRepository(id);
-    let user: any;
-    if (repository == this.freelancerRepo) {
-      user = await this.authService.completeFreelancerProfile(
-        repository,
-        id,
-        body,
-        profilePicture,
-      );
-    }
+    // const id = '5';
+    // const repository = await this.returnRepository(id);
+    // let user: any;
+    // if (repository == this.freelancerRepo) {
+    //   user = await this.authService.completeFreelancerProfile(
+    //     repository,
+    //     id,
+    //     body,
+    //     profilePicture,
+    //   );
+    // }
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       statusCode: 201,
       message: 'You have completed your profile',
-      rowAffected: user.affected,
+      // rowAffected: user.affected,
     });
   }
 }

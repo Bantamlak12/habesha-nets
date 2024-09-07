@@ -15,13 +15,11 @@ import { accountVerificationEmail } from 'src/shared/mailer/templates/account-ve
 import { SmsService } from 'src/shared/sms/sms.service';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { Employer } from '../users/entities/employer.entity';
-import { Freelancer } from '../users/entities/freelancer.entity';
 import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
-import { userInfo } from 'os';
 
 @Injectable()
 export class AuthService {
@@ -30,8 +28,6 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
-    @InjectRepository(Freelancer)
-    private readonly freelancerRepo: Repository<Freelancer>,
     @InjectRepository(ServiceProvider)
     private readonly serviceProviderRepo: Repository<ServiceProvider>,
     @InjectRepository(PropertyOwner)
@@ -162,10 +158,13 @@ export class AuthService {
   async findUserTypeById(id: string): Promise<string> {
     const user =
       (await this.employerRepo.findOne({ where: { id } })) ||
-      (await this.freelancerRepo.findOne({ where: { id } })) ||
       (await this.serviceProviderRepo.findOne({ where: { id } })) ||
       (await this.propertyOwnerRepo.findOne({ where: { id } })) ||
       (await this.propertyRenterRepo.findOne({ where: { id } }));
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
     return user.userType;
   }
@@ -178,10 +177,6 @@ export class AuthService {
     });
     if (user) return user;
 
-    user = await this.freelancerRepo.findOne({
-      where: [{ email }, { phoneNumber }],
-    });
-    if (user) return user;
 
     user = await this.serviceProviderRepo.findOne({
       where: [{ email }, { phoneNumber }],
@@ -219,21 +214,6 @@ export class AuthService {
       });
       await this.employerRepo.save(user);
       // await this.generateAndSendVerificationCode(this.employerRepo, user.id);
-      return user;
-    } else if (body.userType === 'freelancer') {
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
-      );
-      // Create the user and save to the database
-      const user = this.freelancerRepo.create({
-        userType: body.userType,
-        email: body.email ?? null,
-        phoneNumber: body.phoneNumber ?? null,
-        password: hashedPassword,
-      });
-      await this.freelancerRepo.save(user);
-      await this.generateAndSendVerificationCode(this.freelancerRepo, user.id);
       return user;
     } else if (body.userType === 'serviceProvider') {
       const hashedPassword = await this.hashPassword(
@@ -414,8 +394,8 @@ export class AuthService {
     const updatedUser = repo.update(userId, {
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email,
-      phoneNumber: body.phoneNumber,
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       companyName: body.companyName,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
@@ -449,8 +429,8 @@ export class AuthService {
     const updatedUser = repo.update(userId, {
       firstName: body.firstName,
       lastName: body.lastName,
-      email: body.email,
-      phoneNumber: body.phoneNumber,
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
       location: body.location,
