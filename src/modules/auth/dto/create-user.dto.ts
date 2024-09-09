@@ -22,7 +22,7 @@ export class CreateUserDto {
   @ApiProperty({
     example: 'employer',
     description:
-      'User type must be one of these: employer, freelancer, serviceProvider, propertyRenter or propertyOwner',
+      'User type must be one of these: employer, serviceProvider, propertyRenter, propertyOwner or babySitterfinder',
   })
   userType: string;
 

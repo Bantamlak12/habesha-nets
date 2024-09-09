@@ -29,7 +29,7 @@ export class EmployerProfileDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({ example: 'ABC PLC' })
+  @ApiProperty({ example: 'SMS' })
   preferredContactMethod: string;
 
   @ValidateNested()

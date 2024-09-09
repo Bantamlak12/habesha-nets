@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsDecimal,
   ValidateNested,
+  IsEmpty,
 } from 'class-validator';
 import { Type, Transform, plainToClass } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -14,7 +15,7 @@ import { QualificationDto } from './qualification.dto';
 import { ExperienceDto } from './experience.dto';
 import { AvailabilityDto } from './availability.dto';
 
-export class FreelancerProfileDto {
+export class serviceProvidersDto {
   @IsString()
   @ApiProperty({ example: 'John' })
   firstName: string;
@@ -37,29 +38,35 @@ export class FreelancerProfileDto {
   @ApiProperty({ example: 'Web Developer' })
   profession: string;
 
-  @IsArray()
-  @IsString({ each: true })
-  @ApiProperty({ example: ['HTML', 'CSS', 'JavaScript'] })
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      return value.split(',').map((item: string) => item.trim());
-    }
-    return Array.isArray(value) ? value : undefined;
+  @IsString()
+  @ApiProperty({
+    example: 'A passionate web developer with 5 years of experience...',
   })
-  skills: string[];
+  description: string;
 
-  @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => QualificationDto)
-  @ApiProperty({ type: QualificationDto })
+  @ValidateNested()
+  @Type(() => LocationDto)
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       const parsedValue = JSON.parse(value);
-      return plainToClass(QualificationDto, parsedValue);
+      return plainToClass(LocationDto, parsedValue);
     }
     return value;
   })
-  qualifications: QualificationDto;
+  @ApiProperty({ type: LocationDto })
+  location: LocationDto;
+
+  @IsOptional()
+  @ApiProperty({ example: 'Email' })
+  preferredContactMethod: 'Phone' | 'Email' | 'SMS';
+
+  @IsString()
+  @ApiProperty({ example: 'Teaching and Coaching' })
+  serviceCategory: string;
+
+  @IsString()
+  @ApiProperty({ example: 'Tutor' })
+  serviceTitle: string;
 
   @IsOptional()
   @ValidateNested({ each: true })
@@ -75,45 +82,41 @@ export class FreelancerProfileDto {
   experience: ExperienceDto[];
 
   @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => QualificationDto)
+  @ApiProperty({ type: QualificationDto })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(QualificationDto, parsedValue);
+    }
+    return value;
+  })
+  qualifications: QualificationDto;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @ApiProperty({
-    example: ['http://portfolio1.com', 'http://portfolio2.com'],
-  })
+  @ApiProperty({ example: ['HTML', 'CSS', 'JavaScript'] })
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       return value.split(',').map((item: string) => item.trim());
+    }
+    return Array.isArray(value) ? value : undefined;
+  })
+  skills: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @ApiProperty({ example: ['url1', 'url2', 'url3'] })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',').map((item) => item.trim());
     }
     return Array.isArray(value) ? value : undefined;
   })
   portfolioLinks: string[];
-
-  // @IsOptional()
-  // @ApiProperty({
-  //   type: 'string',
-  //   format: 'binary',
-  //   description: 'Portfolio file uploads',
-  // })
-  // portfolioFiles: any;
-
-  @IsOptional()
-  @IsString()
-  @ApiProperty({
-    example: 'A passionate web developer with 5 years of experience...',
-  })
-  description: string;
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  @ApiProperty({ example: ['English', 'Spanish'] })
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      return value.split(',').map((item: string) => item.trim());
-    }
-    return Array.isArray(value) ? value : undefined;
-  })
-  languages: string[];
 
   @IsOptional()
   @ValidateNested()
@@ -134,19 +137,14 @@ export class FreelancerProfileDto {
   hourlyRate: number;
 
   @IsOptional()
-  @ValidateNested()
-  @Type(() => LocationDto)
+  @IsArray()
+  @IsString({ each: true })
+  @ApiProperty({ example: ['English', 'Spanish'] })
   @Transform(({ value }) => {
     if (typeof value === 'string') {
-      const parsedValue = JSON.parse(value);
-      return plainToClass(LocationDto, parsedValue);
+      return value.split(',').map((item: string) => item.trim());
     }
-    return value;
+    return Array.isArray(value) ? value : undefined;
   })
-  @ApiProperty({ type: LocationDto })
-  location: LocationDto;
-
-  @IsEnum(['Phone', 'Email', 'SMS'])
-  @ApiProperty({ example: 'Email' })
-  preferredContactMethod: 'Phone' | 'Email' | 'SMS';
+  languages: string[];
 }
