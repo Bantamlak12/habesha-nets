@@ -9,6 +9,11 @@ export const freelancerProfileSchema = {
       example: '+25424545475',
       nullable: true,
     },
+    profession: { type: 'string', example: 'Web Developer' },
+    description: {
+      type: 'string',
+      example: 'A passionate web developer with 5 years of experience...',
+    },
     profilePicture: {
       type: 'string',
       format: 'binary',
@@ -23,11 +28,25 @@ export const freelancerProfileSchema = {
         country: { type: 'string', example: 'USA' },
       },
     },
-    profession: { type: 'string', example: 'Web Developer' },
-    skills: {
+    serviceCategory: { type: 'string', example: 'Teaching and Coaching' },
+    serviceTitle: { type: 'string', example: 'Totor' },
+    experience: {
       type: 'array',
-      items: { type: 'string' },
-      example: ['HTML', 'CSS', 'JavaScript'],
+      items: {
+        type: 'object',
+        properties: {
+          position: { type: 'string', example: 'Software Engineer' },
+          yearsOfExperience: { type: 'string', example: '3 years' },
+          responsibilities: {
+            type: 'array',
+            items: { type: 'string' },
+            example: ['Developed web applications', 'Led a team of developers'],
+          },
+          company: { type: 'string', example: 'Tech Corp' },
+          startDate: { type: 'string', format: 'date', example: '2020-01-01' },
+          endDate: { type: 'string', format: 'date', example: '2023-01-01' },
+        },
+      },
     },
     qualifications: {
       type: 'object',
@@ -48,6 +67,11 @@ export const freelancerProfileSchema = {
         },
       },
     },
+    skills: {
+      type: 'array',
+      items: { type: 'string' },
+      example: ['HTML', 'CSS', 'JavaScript'],
+    },
     portfolioLinks: {
       type: 'array',
       items: { type: 'string' },
@@ -57,28 +81,6 @@ export const freelancerProfileSchema = {
       type: 'string',
       format: 'binary',
       description: 'portfolio images/pdf',
-    },
-    description: {
-      type: 'string',
-      example: 'A passionate web developer with 5 years of experience...',
-    },
-    experience: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          position: { type: 'string', example: 'Software Engineer' },
-          yearsOfExperience: { type: 'string', example: '3 years' },
-          responsibilities: {
-            type: 'array',
-            items: { type: 'string' },
-            example: ['Developed web applications', 'Led a team of developers'],
-          },
-          company: { type: 'string', example: 'Tech Corp' },
-          startDate: { type: 'string', format: 'date', example: '2020-01-01' },
-          endDate: { type: 'string', format: 'date', example: '2023-01-01' },
-        },
-      },
     },
     availability: {
       type: 'object',
@@ -93,11 +95,11 @@ export const freelancerProfileSchema = {
         },
       },
     },
+    hourlyRate: { type: 'string', example: '3' },
     languages: {
       type: 'array',
       items: { type: 'string' },
       example: ['English', 'French'],
     },
-    hourlyRate: { type: 'string', example: '3' },
   },
 };
