@@ -21,10 +21,10 @@ export class ServiceProvider extends User {
   @Column({ nullable: true })
   profession: string;
 
-  @Column()
+  @Column({ nullable: true })
   serviceCategory: string;
 
-  @Column()
+  @Column({ nullable: true })
   serviceTitle: string;
 
   @Column({ type: 'jsonb', nullable: true })
@@ -47,9 +47,6 @@ export class ServiceProvider extends User {
 
   @Column({ type: 'jsonb', nullable: true })
   verificationDocuments: string[];
-
-  @Column({ type: 'jsonb', nullable: true })
-  serviceAreas: string[];
 
   @Column({ type: 'jsonb', nullable: true })
   availability: {

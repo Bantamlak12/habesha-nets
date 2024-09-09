@@ -32,10 +32,10 @@ export abstract class User {
   @Column({ nullable: true })
   lastName: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true, default: 'N/A' })
   email: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true, default: 'N/A' })
   phoneNumber: string;
 
   @Column()
