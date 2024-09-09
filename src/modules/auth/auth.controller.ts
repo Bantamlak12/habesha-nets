@@ -28,7 +28,7 @@ import {
 } from '@nestjs/swagger';
 import { VerificationCodeDto } from './dto/verification-code.dto';
 import { EmployerProfileDto } from './dto/employer-profile.dto';
-import { FreelancerProfileDto } from './dto/freelancer-profile.dto';
+import { serviceProvidersDto } from './dto/service-providers-profile.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthService } from './auth.service';
 import {
@@ -43,7 +43,7 @@ import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schema';
-import { freelancerProfileSchema } from 'src/shared/schemas/freelancer-profile.schema';
+import { freelancerProfileSchema } from 'src/shared/schemas/service-providers-profile.schema';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/signin-user.dto';
 import { User } from '../users/entities/users.entity';
@@ -214,7 +214,7 @@ export class AuthController {
   @ApiBody({ schema: employerProfileSchema })
   @ApiResponse({ status: 201 })
   async completeEmployerProfile(
-    @Body() body: EmployerProfileDto,
+    @Body() body: serviceProvidersDto,
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
     @UploadedFile(
@@ -250,39 +250,97 @@ export class AuthController {
   }
 
   // COMPLETE PROFESSIONAL FREELANCERS PROFILES
-  @Post('complete-freelancer-profile')
-  @UseInterceptors(FileInterceptor('profilePicture'))
+  @Patch('complete-service-providers-profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'profilePicture', maxCount: 1 },
+      { name: 'portfolioFiles', maxCount: 5 },
+    ]),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'This endpoint is used to complete customer profile.',
+    summary: 'This endpoint is used to complete service Providers profile.',
   })
   @ApiBody({ schema: freelancerProfileSchema })
   @ApiResponse({ status: 201 })
-  async completeFreelancerProfile(
-    @Body() body: FreelancerProfileDto,
+  async completeServiceProvidersProfile(
+    @Body() body: serviceProvidersDto,
     @Response() res: ExpressResponse,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /\/(jpeg|png|jpg)$/ }),
-        ],
-        fileIsRequired: false,
-      }),
-    )
-    profilePicture?: Express.Multer.File,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+      portfolioFiles?: Express.Multer.File[];
+    },
   ) {
-    // const id = '5';
-    // const repository = await this.returnRepository(id);
-    // let user: any;
-    // if (repository == this.freelancerRepo) {
-    //   user = await this.authService.completeFreelancerProfile(
-    //     repository,
-    //     id,
-    //     body,
-    //     profilePicture,
-    //   );
-    // }
+    const profilePicture = files?.profilePicture?.[0];
+    const portfolioFiles = files?.portfolioFiles || [];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    // Check the portfolio files size. It's should not exceed 10MB in total
+    let totalSize: number = 0;
+    let imageCount: number = 0;
+    let pdfCount: number = 0;
+
+    portfolioFiles.forEach((file) => {
+      totalSize += file.size;
+      if (file.mimetype.startsWith('image/')) {
+        imageCount++;
+      } else if (file.mimetype.startsWith('application/pdf')) {
+        pdfCount++;
+      } else {
+        throw new BadRequestException(
+          'Only images or PDF file is allowed to upload.',
+        );
+      }
+    });
+
+    if (imageCount > 5) {
+      throw new BadRequestException(
+        'You can upload a maximum of 5 images for portfolio files.',
+      );
+    }
+
+    if (pdfCount > 1) {
+      throw new BadRequestException(
+        'You can upload only one PDF file for portfolio files.',
+      );
+    }
+
+    if (totalSize > 10 * 1024 * 1024) {
+      throw new BadRequestException(
+        'Total size of portfolio files should not exceed 10MB.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const repository = await this.returnRepository(id);
+    let user: any;
+    if (repository == this.serviceProviderRepo) {
+      user = await this.authService.completeServiceProvidersProfile(
+        repository,
+        id,
+        body,
+        profilePicture,
+        portfolioFiles,
+      );
+    }
+
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       statusCode: 201,
