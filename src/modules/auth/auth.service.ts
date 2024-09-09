@@ -100,7 +100,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       userType: user.userType,
-      isVerfied: false,
+      isVerfied: user.isVerfied,
     };
     return this.jwtService.sign(payload, {
       expiresIn: '24h',
@@ -111,7 +111,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       userType: user.userType,
-      isVerfied: true,
+      isVerfied: user.isVerfied,
     };
     return this.jwtService.sign(payload, {
       expiresIn: '15m',
