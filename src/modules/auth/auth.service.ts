@@ -177,7 +177,6 @@ export class AuthService {
     });
     if (user) return user;
 
-
     user = await this.serviceProviderRepo.findOne({
       where: [{ email }, { phoneNumber }],
     });
@@ -208,8 +207,8 @@ export class AuthService {
       // Create the user and save to the database
       const user = this.employerRepo.create({
         userType: body.userType,
-        email: body.email ?? null,
-        phoneNumber: body.phoneNumber ?? null,
+        email: body.email,
+        phoneNumber: body.phoneNumber,
         password: hashedPassword,
       });
       await this.employerRepo.save(user);
@@ -223,8 +222,8 @@ export class AuthService {
       // Create the user and save to the database
       const user = this.serviceProviderRepo.create({
         userType: body.userType,
-        email: body.email ?? null,
-        phoneNumber: body.phoneNumber ?? null,
+        email: body.email,
+        phoneNumber: body.phoneNumber,
         password: hashedPassword,
       });
       await this.serviceProviderRepo.save(user);
@@ -241,8 +240,8 @@ export class AuthService {
       // Create the user and save to the database
       const user = this.propertyOwnerRepo.create({
         userType: body.userType,
-        email: body.email ?? null,
-        phoneNumber: body.phoneNumber ?? null,
+        email: body.email,
+        phoneNumber: body.phoneNumber,
         password: hashedPassword,
       });
       await this.propertyOwnerRepo.save(user);
@@ -259,8 +258,8 @@ export class AuthService {
       // Create the user and save to the database
       const user = this.propertyRenterRepo.create({
         userType: body.userType,
-        email: body.email ?? null,
-        phoneNumber: body.phoneNumber ?? null,
+        email: body.email,
+        phoneNumber: body.phoneNumber,
         password: hashedPassword,
       });
       await this.propertyRenterRepo.save(user);
@@ -406,11 +405,12 @@ export class AuthService {
     return updatedUser;
   }
 
-  async completeFreelancerProfile(
+  async completeServiceProvidersProfile(
     repo: Repository<any>,
     userId: string,
     body: any,
     profileImg: Express.Multer.File,
+    portfolioFiles: Express.Multer.File[],
   ) {
     // Check if the user exists
     const user = await repo.findOne({ where: { id: userId } });
@@ -425,28 +425,45 @@ export class AuthService {
       profileURL = await this.uploadService.uploadFileToS3(profileImg);
     }
 
-    // Update the fields
-    const updatedUser = repo.update(userId, {
-      firstName: body.firstName,
-      lastName: body.lastName,
-      email: user.email ? user.email : body.email,
-      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
-      profilePicture: profileURL,
-      preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
-      profession: body.profession,
-      skills: body.skills,
-      qualifications: body.qualification,
-      portfolioLinks: body.portfolioLinks,
-      portfolioFiles: body.portfolioFiles,
-      description: body.description,
-      experience: body.experience,
-      availability: body.availability,
-      languages: body.languages,
-      hourlyRate: body.hourlyRate,
-    });
+    let portfolioUrls: string[] = [];
+    if (portfolioFiles && process.env.NODE_ENV === 'development') {
+      portfolioUrls = await Promise.all(
+        portfolioFiles.map(async (file) => {
+          return await this.uploadService.uploadFile(file, 'portfolios');
+        }),
+      );
+    } else if (portfolioFiles && process.env.NODE_ENV === 'production') {
+      portfolioUrls = await Promise.all(
+        portfolioFiles.map(async (file) => {
+          return await this.uploadService.uploadFile(file, 'portfolios');
+        }),
+      );
+    }
+    console.log('Profile URL:', profileURL);
+    console.log('Portfolio URLs:', portfolioUrls);
 
-    return updatedUser;
+    // Update the fields
+    // const updatedUser = repo.update(userId, {
+    //   firstName: body.firstName,
+    //   lastName: body.lastName,
+    //   email: user.email ? user.email : body.email,
+    //   phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+    //   profilePicture: profileURL,
+    //   preferredContactMethod: body.preferredContactMethod,
+    //   location: body.location,
+    //   profession: body.profession,
+    //   skills: body.skills,
+    //   qualifications: body.qualification,
+    //   portfolioLinks: body.portfolioLinks,
+    //   portfolioFiles: portfolioUrls,
+    //   description: body.description,
+    //   experience: body.experience,
+    //   availability: body.availability,
+    //   languages: body.languages,
+    //   hourlyRate: body.hourlyRate,
+    // });
+
+    // return updatedUser;
   }
 
   // ⁡⁢⁢⁢⁡⁢⁢⁢5) 𝗥𝗘𝗩𝗜𝗘𝗪 𝗔𝗡𝗗 𝗦𝗨𝗕𝗠𝗜𝗧⁡
