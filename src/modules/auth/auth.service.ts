@@ -198,7 +198,7 @@ export class AuthService {
   // APPLICATION RELATED METHODS
   /****************************************************************************************/
 
-  // ⁡⁢⁢⁢𝟭) 𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
+  // ⁡⁢⁢𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
   async signup(body: any) {
     if (body.userType === 'employer') {
       const hashedPassword = await this.hashPassword(
@@ -274,7 +274,7 @@ export class AuthService {
     }
   }
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝟮) 𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡⁡
+  // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡⁡
   // Send 6-digit SMS or email verification code to the user
   async generateAndSendVerificationCode(
     repo: Repository<any>,
@@ -361,7 +361,6 @@ export class AuthService {
     return true;
   }
 
-  // ⁡⁢⁢⁢⁡⁢⁢⁢𝟯) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
   async signInUser(user: any) {
     // Generate JWT tokens and return
     const accessToken = this.generateAccessToken(user);
@@ -370,7 +369,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢𝟰) 𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗖𝗨𝗦𝗧𝗢𝗠𝗘𝗥𝗦 𝗔𝗡𝗗 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
+  // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡
   async completeEmployerProfile(
     repo: Repository<any>,
     userId: string,
@@ -380,7 +379,11 @@ export class AuthService {
     // Check if the user exists
     const user = await repo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('Employer not found');
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
     }
 
     let profileURL: string | undefined;
@@ -400,12 +403,15 @@ export class AuthService {
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
       location: body.location,
-      description: body.description,
+      bio: body.bio,
     });
+
+    repo.update(userId, { isProfileCompleted: true });
 
     return updatedUser;
   }
 
+  // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
   async completeServiceProvidersProfile(
     repo: Repository<any>,
     userId: string,
@@ -416,7 +422,11 @@ export class AuthService {
     // Check if the user exists
     const user = await repo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('Employer not found');
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
     }
 
     let profileURL: string | undefined;
@@ -440,36 +450,118 @@ export class AuthService {
         }),
       );
     }
-    console.log('Profile URL:', profileURL);
-    console.log('Portfolio URLs:', portfolioUrls);
 
     // Update the fields
-    // const updatedUser = repo.update(userId, {
-    //   firstName: body.firstName,
-    //   lastName: body.lastName,
-    //   email: user.email ? user.email : body.email,
-    //   phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
-    //   profilePicture: profileURL,
-    //   preferredContactMethod: body.preferredContactMethod,
-    //   location: body.location,
-    //   profession: body.profession,
-    //   skills: body.skills,
-    //   qualifications: body.qualification,
-    //   portfolioLinks: body.portfolioLinks,
-    //   portfolioFiles: portfolioUrls,
-    //   description: body.description,
-    //   experience: body.experience,
-    //   availability: body.availability,
-    //   languages: body.languages,
-    //   hourlyRate: body.hourlyRate,
-    // });
+    const updatedUser = repo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      location: body.location,
+      profession: body.profession,
+      skills: body.skills,
+      qualifications: body.qualifications,
+      portfolioLinks: body.portfolioLinks,
+      portfolioFiles: portfolioUrls,
+      bio: body.bio,
+      experience: body.experience,
+      availability: body.availability,
+      languages: body.languages,
+      hourlyRate: body.hourlyRate,
+    });
 
-    // return updatedUser;
+    repo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
   }
 
-  // ⁡⁢⁢⁢⁡⁢⁢⁢5) 𝗥𝗘𝗩𝗜𝗘𝗪 𝗔𝗡𝗗 𝗦𝗨𝗕𝗠𝗜𝗧⁡
+  // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗢𝗪𝗡𝗘𝗥𝗦⁡
+  async completePropertyOwnersProfile(
+    repo: Repository<any>,
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢6) 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
+    }
 
-  // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢7) 𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = repo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      location: body.location,
+      propertyType: body.propertyType,
+    });
+
+    repo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
+  }
+
+  // ⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗥𝗘𝗡𝗧𝗘𝗥⁡
+  async completePropertyRenterProfile(
+    repo: Repository<any>,
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = repo.update(userId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      location: body.location,
+      propertyType: body.propertyType,
+    });
+
+    repo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
+  }
+
+  // ⁡⁢⁣⁣⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+
+  // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
 }

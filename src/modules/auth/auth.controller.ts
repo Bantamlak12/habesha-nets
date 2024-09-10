@@ -34,7 +34,6 @@ import { AuthService } from './auth.service';
 import {
   FileFieldsInterceptor,
   FileInterceptor,
-  FilesInterceptor,
 } from '@nestjs/platform-express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -46,16 +45,15 @@ import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schem
 import { freelancerProfileSchema } from 'src/shared/schemas/service-providers-profile.schema';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/signin-user.dto';
-import { User } from '../users/entities/users.entity';
 import { AuthGuard } from '@nestjs/passport';
+import { PropertyOwnerDto } from './dto/propertyOwner.dto';
+import { PropertyOwnersProfileSchema } from 'src/shared/schemas/property-owner-profile.schema';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
     @InjectRepository(ServiceProvider)
@@ -199,6 +197,7 @@ export class AuthController {
       statusCode: 200,
       message: 'You are successfully signed in.',
       accessToken: tokens.accessToken,
+      user: user,
     });
   }
 
@@ -214,7 +213,7 @@ export class AuthController {
   @ApiBody({ schema: employerProfileSchema })
   @ApiResponse({ status: 201 })
   async completeEmployerProfile(
-    @Body() body: serviceProvidersDto,
+    @Body() body: EmployerProfileDto,
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
     @UploadedFile(
@@ -239,6 +238,10 @@ export class AuthController {
         body,
         file,
       );
+    } else {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
     }
 
     return res.status(HttpStatus.CREATED).json({
@@ -249,7 +252,7 @@ export class AuthController {
     });
   }
 
-  // COMPLETE PROFESSIONAL FREELANCERS PROFILES
+  // COMPLETE SERVICE PROVIDERS PROFILES
   @Patch('complete-service-providers-profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
@@ -330,6 +333,7 @@ export class AuthController {
 
     const id = req.user['sub'];
     const repository = await this.returnRepository(id);
+
     let user: any;
     if (repository == this.serviceProviderRepo) {
       user = await this.authService.completeServiceProvidersProfile(
@@ -338,6 +342,73 @@ export class AuthController {
         body,
         profilePicture,
         portfolioFiles,
+      );
+    } else {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  // COMPLETE PROPERTY OWNER PROFILE
+  @Patch('complete-property-owners-profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'This endpoint is used to complete property owners profile.',
+  })
+  @ApiBody({ schema: PropertyOwnersProfileSchema })
+  @ApiResponse({ status: 201 })
+  async completePropertyOwnersProfile(
+    @Body() body: PropertyOwnerDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const repository = await this.returnRepository(id);
+
+    let user: any;
+    if (repository == this.propertyOwnerRepo) {
+      user = await this.authService.completePropertyOwnersProfile(
+        repository,
+        id,
+        body,
+        profilePicture,
+      );
+    } else {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
       );
     }
 
