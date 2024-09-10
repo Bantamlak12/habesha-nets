@@ -3,10 +3,8 @@ import {
   IsOptional,
   IsArray,
   IsEmail,
-  IsEnum,
   IsDecimal,
   ValidateNested,
-  IsEmpty,
 } from 'class-validator';
 import { Type, Transform, plainToClass } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -42,7 +40,7 @@ export class serviceProvidersDto {
   @ApiProperty({
     example: 'A passionate web developer with 5 years of experience...',
   })
-  description: string;
+  bio: string;
 
   @ValidateNested()
   @Type(() => LocationDto)

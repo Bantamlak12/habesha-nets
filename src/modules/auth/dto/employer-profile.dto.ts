@@ -51,5 +51,5 @@ export class EmployerProfileDto {
   @IsOptional()
   @IsString()
   @ApiProperty({ example: 'ABC PLC' })
-  description: string;
+  bio: string;
 }
