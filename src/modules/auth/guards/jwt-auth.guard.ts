@@ -28,7 +28,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     // If the user is not verified, restrict access to specific routes
-    if (!request.user.isVerfied && !this.isVerificationRoute(request)) {
+    if (!request.user.isVerified && !this.isVerificationRoute(request)) {
       throw new UnauthorizedException('User is not verified yet');
     }
 
