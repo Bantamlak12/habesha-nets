@@ -9,9 +9,6 @@ export class PropertyRenter extends User {
     max: number;
   };
 
-  @Column({ nullable: true })
-  moveInDate: Date;
-
   @CreateDateColumn()
   createdAt: Date;
 
