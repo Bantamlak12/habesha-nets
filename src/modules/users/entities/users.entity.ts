@@ -24,7 +24,7 @@ export abstract class User {
   verificationCodeExpires: Date;
 
   @Column({ default: false })
-  profileActivated: boolean;
+  isProfileCompleted: boolean;
 
   @Column({ nullable: true })
   firstName: string;
@@ -32,10 +32,10 @@ export abstract class User {
   @Column({ nullable: true })
   lastName: string;
 
-  @Column({ unique: true, default: 'N/A' })
+  @Column({ unique: true, default: null })
   email: string;
 
-  @Column({ unique: true, default: 'N/A' })
+  @Column({ unique: true, default: null })
   phoneNumber: string;
 
   @Column()
@@ -55,7 +55,7 @@ export abstract class User {
   preferredContactMethod: 'Phone' | 'Email' | 'SMS';
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  bio: string;
 
   @Column({ default: 'unsubscribed' })
   subscriptionStatus: 'subscribed' | 'unsubscribed';
