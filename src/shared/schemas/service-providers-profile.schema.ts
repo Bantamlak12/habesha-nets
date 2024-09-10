@@ -10,7 +10,7 @@ export const freelancerProfileSchema = {
       nullable: true,
     },
     profession: { type: 'string', example: 'Web Developer' },
-    description: {
+    bio: {
       type: 'string',
       example: 'A passionate web developer with 5 years of experience...',
     },

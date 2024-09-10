@@ -1,4 +1,4 @@
-export const employerProfileSchema = {
+export const PropertyOwnersProfileSchema = {
   type: 'object',
   properties: {
     firstName: { type: 'string', example: 'John' },
@@ -9,11 +9,14 @@ export const employerProfileSchema = {
       example: '+25424545475',
       nullable: true,
     },
-    companyName: { type: 'string', example: 'ABC Company' },
+    bio: {
+      type: 'string',
+      example:
+        'I am a landloard in Los Angeles, California, offering a house for rent with a rental price of $144 - $1023, and prefers to be contacted via SMS.',
+    },
     profilePicture: {
       type: 'string',
       format: 'binary',
-      description: 'Profile picture file',
     },
     preferredContactMethod: { type: 'string', example: 'SMS' },
     location: {
@@ -24,10 +27,6 @@ export const employerProfileSchema = {
         country: { type: 'string', example: 'USA' },
       },
     },
-    bio: {
-      type: 'string',
-      example:
-        'ABC is an innovative tech firm revolutionizing the AI industry with cutting-edge solutions.',
-    },
+    propertyType: { type: 'string', example: 'House' },
   },
 };
