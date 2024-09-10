@@ -345,7 +345,7 @@ export class AuthController {
       status: 'success',
       statusCode: 201,
       message: 'You have completed your profile',
-      // rowAffected: user.affected,
+      rowAffected: user.affected,
     });
   }
 }

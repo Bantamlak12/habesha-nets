@@ -100,7 +100,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       userType: user.userType,
-      isVerfied: user.isVerfied,
+      isVerified: user.isVerified,
     };
     return this.jwtService.sign(payload, {
       expiresIn: '24h',
@@ -111,7 +111,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       userType: user.userType,
-      isVerfied: user.isVerfied,
+      isVerified: user.isVerified,
     };
     return this.jwtService.sign(payload, {
       expiresIn: '15m',
@@ -147,6 +147,7 @@ export class AuthService {
         userId: user.id,
         token: refreshToken,
         userType: user.userType,
+        isVerified: user.isVerfied,
         expiresAt: expiresAt,
       });
       await this.refreshTokenRepo.save(refreshTokenRecord);

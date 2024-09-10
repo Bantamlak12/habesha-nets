@@ -17,6 +17,9 @@ export class RefreshToken {
   @Column()
   userType: string;
 
+  @Column({ default: false })
+  isVerified: boolean;
+
   @Column()
   token: string;
 
