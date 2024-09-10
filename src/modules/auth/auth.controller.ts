@@ -46,8 +46,10 @@ import { freelancerProfileSchema } from 'src/shared/schemas/service-providers-pr
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/signin-user.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { PropertyOwnerDto } from './dto/propertyOwner.dto';
+import { PropertyOwnerDto } from './dto/property-owner.dto';
 import { PropertyOwnersProfileSchema } from 'src/shared/schemas/property-owner-profile.schema';
+import { PropertyRenterProfileSchema } from 'src/shared/schemas/property-renter-profile.schema';
+import { PropertyRenterDto } from './dto/property-renter.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -401,6 +403,69 @@ export class AuthController {
     let user: any;
     if (repository == this.propertyOwnerRepo) {
       user = await this.authService.completePropertyOwnersProfile(
+        repository,
+        id,
+        body,
+        profilePicture,
+      );
+    } else {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  // COMPLETE PROPERTY RENTER PROFILE
+  @Patch('complete-property-renter-profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'This endpoint is used to complete property renters profile.',
+  })
+  @ApiBody({ schema: PropertyRenterProfileSchema })
+  @ApiResponse({ status: 201 })
+  async completePropertyRenterProfile(
+    @Body() body: PropertyRenterDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const repository = await this.returnRepository(id);
+
+    let user: any;
+    if (repository == this.propertyRenterRepo) {
+      user = await this.authService.completePropertyRenterProfile(
         repository,
         id,
         body,

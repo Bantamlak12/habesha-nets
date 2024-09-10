@@ -553,7 +553,7 @@ export class AuthService {
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
       location: body.location,
-      propertyType: body.propertyType,
+      budgetRange: body.budgetRange,
     });
 
     repo.update(userId, { isProfileCompleted: true });
