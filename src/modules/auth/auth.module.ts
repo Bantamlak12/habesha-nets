@@ -8,26 +8,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerConfigModule } from 'src/shared/mailer/mailer.module';
 import { SmsModule } from 'src/shared/sms/sms.module';
 import { UploadModule } from 'src/shared/upload/upload.module';
-import { Employer } from '../users/entities/employer.entity';
-import { ServiceProvider } from '../users/entities/serviceProvider.entity';
-import { PropertyOwner } from '../users/entities/propertyOwner.entity';
-import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { ConfigService } from '@nestjs/config';
-import { BabySitterFinder } from '../users/entities/babySitterFinder.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      User,
-      Employer,
-      ServiceProvider,
-      PropertyOwner,
-      PropertyRenter,
-      BabySitterFinder,
-      RefreshToken,
-    ]),
+    TypeOrmModule.forFeature([User, RefreshToken]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
