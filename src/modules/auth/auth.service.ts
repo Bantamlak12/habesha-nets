@@ -148,6 +148,35 @@ export class AuthService {
     return refreshToken;
   }
 
+  async validateRefreshToken(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
+    // Check if the refresh token exists in the DB
+    const id = (await this.jwtService.decode(refreshToken))['sub'];
+    const existingToken = (
+      await this.refreshTokenRepo.findOne({
+        where: { user: { id } },
+      })
+    ).token;
+
+    if (!existingToken) {
+      throw new UnauthorizedException('Existing refresh token not found');
+    }
+    const user = await this.refreshTokenRepo.findOne({
+      where: { user: { id } },
+      relations: ['user'],
+    });
+
+    const isMatch = await bcrypt.compare(refreshToken, existingToken);
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    return user;
+  }
+
   async findUserTypeById(id: string): Promise<string> {
     const user =
       (await this.employerRepo.findOne({ where: { id } })) ||
@@ -382,35 +411,6 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
     return { accessToken, refreshToken };
-  }
-
-  async validateRefreshToken(refreshToken: string) {
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token not found');
-    }
-
-    // Check if the refresh token exists in the DB
-    const id = (await this.jwtService.decode(refreshToken))['sub'];
-    const existingToken = (
-      await this.refreshTokenRepo.findOne({
-        where: { user: { id } },
-      })
-    ).token;
-
-    if (!existingToken) {
-      throw new UnauthorizedException('Existing refresh token not found');
-    }
-    const user = await this.refreshTokenRepo.findOne({
-      where: { user: { id } },
-      relations: ['user'],
-    });
-
-    const isMatch = await bcrypt.compare(refreshToken, existingToken);
-    if (!isMatch) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-
-    return user;
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡

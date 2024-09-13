@@ -231,6 +231,7 @@ export class AuthController {
     const refreshToken = req.cookies['rft'];
 
     const user = await this.authService.validateRefreshToken(refreshToken);
+    console.log(user);
     // const tokens = await this.authService.signInUser(user);
 
     // const cookieOptions: CookieOptions = {
