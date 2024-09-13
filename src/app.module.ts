@@ -11,6 +11,7 @@ import { Employer } from './modules/users/entities/employer.entity';
 import { ServiceProvider } from './modules/users/entities/serviceProvider.entity';
 import { PropertyOwner } from './modules/users/entities/propertyOwner.entity';
 import { PropertyRenter } from './modules/users/entities/propertyRenter.entity';
+import { BabySitterFinder } from './modules/users/entities/babySitterFinder.entity';
 import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
 import { User } from './modules/users/entities/users.entity';
 
@@ -35,6 +36,7 @@ import { User } from './modules/users/entities/users.entity';
           ServiceProvider,
           PropertyOwner,
           PropertyRenter,
+          BabySitterFinder,
           RefreshToken,
         ],
         synchronize: true,
