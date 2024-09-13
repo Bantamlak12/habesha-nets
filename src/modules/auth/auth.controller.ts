@@ -37,18 +37,21 @@ import {
 } from '@nestjs/platform-express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Employer } from '../users/entities/employer.entity';
 import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
+import { BabySitterFinder } from '../users/entities/babySitterFinder.entity';
 import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schema';
 import { freelancerProfileSchema } from 'src/shared/schemas/service-providers-profile.schema';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { LoginDto } from './dto/signin-user.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { PropertyOwnerDto } from './dto/property-owner.dto';
 import { PropertyOwnersProfileSchema } from 'src/shared/schemas/property-owner-profile.schema';
 import { PropertyRenterProfileSchema } from 'src/shared/schemas/property-renter-profile.schema';
+import { babySitterFinder } from 'src/shared/schemas/baby-sitter-finder.schema';
+import { BabySitterFinderDto } from './dto/baby-sitter-finder.dto';
+import { PropertyOwnerDto } from './dto/property-owner.dto';
+import { LoginDto } from './dto/signin-user.dto';
 import { PropertyRenterDto } from './dto/property-renter.dto';
 
 @ApiTags('auth')
@@ -64,6 +67,8 @@ export class AuthController {
     private readonly propertyOwnerRepo: Repository<PropertyOwner>,
     @InjectRepository(PropertyRenter)
     private readonly propertyRenterRepo: Repository<PropertyRenter>,
+    @InjectRepository(BabySitterFinder)
+    private readonly babySitterFinderRepo: Repository<BabySitterFinder>,
   ) {}
 
   async returnRepository(id: string) {
@@ -85,6 +90,9 @@ export class AuthController {
         break;
       case 'propertyRenter':
         repository = this.propertyRenterRepo;
+        break;
+      case 'babySitterFinder':
+        repository = this.babySitterFinderRepo;
         break;
       default:
         throw new BadRequestException('Invalid user type');
@@ -109,6 +117,7 @@ export class AuthController {
     await this.authService.checkUser(this.serviceProviderRepo, body);
     await this.authService.checkUser(this.propertyOwnerRepo, body);
     await this.authService.checkUser(this.propertyRenterRepo, body);
+    await this.authService.checkUser(this.babySitterFinderRepo, body);
 
     // 2) Register the user and get the user
     const user = await this.authService.signup(body);
@@ -199,12 +208,11 @@ export class AuthController {
       statusCode: 200,
       message: 'You are successfully signed in.',
       accessToken: tokens.accessToken,
-      user: user,
     });
   }
 
   // COMPLETE EMPLOYER PROFILE
-  @Patch('complete-employer-profile')
+  @Patch('employers/profile/complete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @UseInterceptors(FileInterceptor('profilePicture'))
@@ -255,7 +263,7 @@ export class AuthController {
   }
 
   // COMPLETE SERVICE PROVIDERS PROFILES
-  @Patch('complete-service-providers-profile')
+  @Patch('service-providers/profile/complete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @UseInterceptors(
@@ -360,7 +368,7 @@ export class AuthController {
   }
 
   // COMPLETE PROPERTY OWNER PROFILE
-  @Patch('complete-property-owners-profile')
+  @Patch('property-owners/profile/complete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @UseInterceptors(
@@ -423,7 +431,7 @@ export class AuthController {
   }
 
   // COMPLETE PROPERTY RENTER PROFILE
-  @Patch('complete-property-renter-profile')
+  @Patch('property-renters/profile/complete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @UseInterceptors(
@@ -466,6 +474,69 @@ export class AuthController {
     let user: any;
     if (repository == this.propertyRenterRepo) {
       user = await this.authService.completePropertyRenterProfile(
+        repository,
+        id,
+        body,
+        profilePicture,
+      );
+    } else {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  // COMPLETE BABY SITTER FINDER PROFILE
+  @Patch('baby-sitter-finder/profile/complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: "This endpoint is used to complete baby sitter finder's profile.",
+  })
+  @ApiBody({ schema: babySitterFinder })
+  @ApiResponse({ status: 201 })
+  async completeBabySitterFinderProfile(
+    @Body() body: BabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const repository = await this.returnRepository(id);
+
+    let user: any;
+    if (repository == this.babySitterFinderRepo) {
+      user = await this.authService.completeBabySitterFinderProfile(
         repository,
         id,
         body,

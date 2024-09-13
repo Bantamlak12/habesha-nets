@@ -19,13 +19,12 @@ import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
-import { User } from '../users/entities/users.entity';
+import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
+import { BabySitterFinder } from '../users/entities/babySitterFinder.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
     @InjectRepository(Employer)
     private readonly employerRepo: Repository<Employer>,
     @InjectRepository(ServiceProvider)
@@ -34,6 +33,8 @@ export class AuthService {
     private readonly propertyOwnerRepo: Repository<PropertyOwner>,
     @InjectRepository(PropertyRenter)
     private readonly propertyRenterRepo: Repository<PropertyRenter>,
+    @InjectRepository(BabySitterFinder)
+    private readonly babySitterFinderRepo: Repository<BabySitterFinder>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly jwtService: JwtService,
@@ -161,7 +162,8 @@ export class AuthService {
       (await this.employerRepo.findOne({ where: { id } })) ||
       (await this.serviceProviderRepo.findOne({ where: { id } })) ||
       (await this.propertyOwnerRepo.findOne({ where: { id } })) ||
-      (await this.propertyRenterRepo.findOne({ where: { id } }));
+      (await this.propertyRenterRepo.findOne({ where: { id } })) ||
+      (await this.babySitterFinderRepo.findOne({ where: { id } }));
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -192,6 +194,11 @@ export class AuthService {
       where: [{ email }, { phoneNumber }],
     });
     if (user) return user;
+
+    user = await this.babySitterFinderRepo.findOne({
+      where: [{ email }, { phoneNumber }],
+    });
+    if (user) return user;
   }
 
   /****************************************************************************************/
@@ -213,7 +220,7 @@ export class AuthService {
         password: hashedPassword,
       });
       await this.employerRepo.save(user);
-      // await this.generateAndSendVerificationCode(this.employerRepo, user.id);
+      await this.generateAndSendVerificationCode(this.employerRepo, user.id);
       return user;
     } else if (body.userType === 'serviceProvider') {
       const hashedPassword = await this.hashPassword(
@@ -266,6 +273,24 @@ export class AuthService {
       await this.propertyRenterRepo.save(user);
       await this.generateAndSendVerificationCode(
         this.propertyRenterRepo,
+        user.id,
+      );
+      return user;
+    } else if (body.userType === 'babySitterFinder') {
+      const hashedPassword = await this.hashPassword(
+        body.password,
+        body.confirmPassword,
+      );
+      // Create the user and save to the database
+      const user = this.babySitterFinderRepo.create({
+        userType: body.userType,
+        email: body.email,
+        phoneNumber: body.phoneNumber,
+        password: hashedPassword,
+      });
+      await this.babySitterFinderRepo.save(user);
+      await this.generateAndSendVerificationCode(
+        this.babySitterFinderRepo,
         user.id,
       );
       return user;
@@ -394,9 +419,9 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = repo.update(userId, {
-      firstName: body.firstName,
-      lastName: body.lastName,
+    const updatedUser = await repo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
       phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       companyName: body.companyName,
@@ -406,7 +431,11 @@ export class AuthService {
       bio: body.bio,
     });
 
-    repo.update(userId, { isProfileCompleted: true });
+    await repo.update(userId, { isProfileCompleted: true });
+
+    // ⁡⁢⁢⁢⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+
+    // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
 
     return updatedUser;
   }
@@ -452,9 +481,9 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = repo.update(userId, {
-      firstName: body.firstName,
-      lastName: body.lastName,
+    const updatedUser = await repo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
       phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       profilePicture: profileURL,
@@ -472,7 +501,11 @@ export class AuthService {
       hourlyRate: body.hourlyRate,
     });
 
-    repo.update(userId, { isProfileCompleted: true });
+    await repo.update(userId, { isProfileCompleted: true });
+
+    // ⁡⁢⁢⁢⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+
+    // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
 
     return updatedUser;
   }
@@ -502,9 +535,9 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = repo.update(userId, {
-      firstName: body.firstName,
-      lastName: body.lastName,
+    const updatedUser = await repo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
       phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       bio: body.bio,
@@ -514,7 +547,11 @@ export class AuthService {
       propertyType: body.propertyType,
     });
 
-    repo.update(userId, { isProfileCompleted: true });
+    await repo.update(userId, { isProfileCompleted: true });
+
+    // ⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+
+    // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
 
     return updatedUser;
   }
@@ -544,9 +581,9 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = repo.update(userId, {
-      firstName: body.firstName,
-      lastName: body.lastName,
+    const updatedUser = await repo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
       phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       bio: body.bio,
@@ -556,12 +593,57 @@ export class AuthService {
       budgetRange: body.budgetRange,
     });
 
-    repo.update(userId, { isProfileCompleted: true });
+    await repo.update(userId, { isProfileCompleted: true });
+
+    // ⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+
+    // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
 
     return updatedUser;
   }
 
-  // ⁡⁢⁣⁣⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+  // ⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗕𝗔𝗕𝗬 𝗦𝗜𝗧𝗧𝗘𝗥 𝗙𝗜𝗡𝗗𝗘𝗥⁡
+  async completeBabySitterFinderProfile(
+    repo: Repository<any>,
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await repo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
-  // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await repo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      location: body.location,
+    });
+
+    await repo.update(userId, { isProfileCompleted: true });
+
+    // ⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
+
+    // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
+
+    return updatedUser;
+  }
 }

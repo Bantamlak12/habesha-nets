@@ -13,6 +13,7 @@ import { ServiceProvider } from '../users/entities/serviceProvider.entity';
 import { PropertyOwner } from '../users/entities/propertyOwner.entity';
 import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { ConfigService } from '@nestjs/config';
+import { BabySitterFinder } from '../users/entities/babySitterFinder.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
 
@@ -24,6 +25,7 @@ import { User } from '../users/entities/users.entity';
       ServiceProvider,
       PropertyOwner,
       PropertyRenter,
+      BabySitterFinder,
       RefreshToken,
     ]),
     JwtModule.registerAsync({
