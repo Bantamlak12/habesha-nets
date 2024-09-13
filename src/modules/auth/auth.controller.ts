@@ -15,6 +15,7 @@ import {
   UseGuards,
   UseInterceptors,
   Patch,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CookieOptions, Response as ExpressResponse } from 'express';
 import { Request as ExpressRequest } from 'express';
@@ -53,6 +54,7 @@ import { BabySitterFinderDto } from './dto/baby-sitter-finder.dto';
 import { PropertyOwnerDto } from './dto/property-owner.dto';
 import { LoginDto } from './dto/signin-user.dto';
 import { PropertyRenterDto } from './dto/property-renter.dto';
+import { RefreshToken } from './entities/refresh-token.entity';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -69,6 +71,8 @@ export class AuthController {
     private readonly propertyRenterRepo: Repository<PropertyRenter>,
     @InjectRepository(BabySitterFinder)
     private readonly babySitterFinderRepo: Repository<BabySitterFinder>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
   ) {}
 
   async returnRepository(id: string) {
@@ -194,6 +198,9 @@ export class AuthController {
     const user = req.user;
     const tokens = await this.authService.signInUser(user);
 
+    // Save the refresh token to DB
+    await this.authService.saveRefreshToken(user, tokens.refreshToken);
+
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       secure: true,
@@ -208,6 +215,38 @@ export class AuthController {
       statusCode: 200,
       message: 'You are successfully signed in.',
       accessToken: tokens.accessToken,
+    });
+  }
+
+  @Post('refresh-token')
+  @ApiOperation({
+    summary:
+      'Refresh the access token using the refresh token stored in cookies.',
+  })
+  @ApiResponse({ status: 200 })
+  async refreshToken(
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const refreshToken = req.cookies['rft'];
+
+    const user = await this.authService.validateRefreshToken(refreshToken);
+    // const tokens = await this.authService.signInUser(user);
+
+    // const cookieOptions: CookieOptions = {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: 'strict',
+    //   maxAge: 7 * 24 * 60 * 60 * 1000,
+    // };
+
+    // res.cookie('rft', tokens.refreshToken, cookieOptions);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      // statusCode: 200,
+      // message: 'You are successfully signed in.',
+      // accessToken: tokens.accessToken,
     });
   }
 

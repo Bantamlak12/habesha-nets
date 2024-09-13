@@ -119,40 +119,31 @@ export class AuthService {
     });
   }
 
-  async generateRefreshToken(user: any) {
+  generateRefreshToken(user: any) {
     const payload = {
       sub: user.id,
       userType: user.userType,
       isVerified: user.isVerified,
     };
-    const refreshToken = this.jwtService.sign(payload, {
+    return this.jwtService.sign(payload, {
       expiresIn: '7d',
     });
+  }
 
+  async saveRefreshToken(user: any, refreshToken: string) {
     const currentDate = new Date();
     const expiresAt = new Date(currentDate);
     expiresAt.setMonth(currentDate.getMonth() + 1);
 
-    // check if there is exisitng token
-    const existingToken = await this.refreshTokenRepo.findOne({
-      where: { userId: user.id },
+    const hashedToken = await this.hashPassword(refreshToken, refreshToken);
+    const refreshTokenRecord = this.refreshTokenRepo.create({
+      token: hashedToken,
+      userType: user.userType,
+      isVerified: user.isVerified,
+      expiresAt: expiresAt,
+      user,
     });
-
-    if (existingToken) {
-      // Update the existing token
-      existingToken.token = refreshToken;
-      existingToken.expiresAt = expiresAt;
-      await this.refreshTokenRepo.save(existingToken);
-    } else {
-      const refreshTokenRecord = this.refreshTokenRepo.create({
-        userId: user.id,
-        token: refreshToken,
-        userType: user.userType,
-        isVerified: user.isVerfied,
-        expiresAt: expiresAt,
-      });
-      await this.refreshTokenRepo.save(refreshTokenRecord);
-    }
+    await this.refreshTokenRepo.save(refreshTokenRecord);
 
     return refreshToken;
   }
@@ -205,7 +196,7 @@ export class AuthService {
   // APPLICATION RELATED METHODS
   /****************************************************************************************/
 
-  // ⁡⁢⁢𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
+  // ⁡⁢⁢⁡⁢⁢⁢𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
   async signup(body: any) {
     if (body.userType === 'employer') {
       const hashedPassword = await this.hashPassword(
@@ -389,9 +380,37 @@ export class AuthService {
   async signInUser(user: any) {
     // Generate JWT tokens and return
     const accessToken = this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user);
-
+    const refreshToken = this.generateRefreshToken(user);
     return { accessToken, refreshToken };
+  }
+
+  async validateRefreshToken(refreshToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
+    // Check if the refresh token exists in the DB
+    const id = (await this.jwtService.decode(refreshToken))['sub'];
+    const existingToken = (
+      await this.refreshTokenRepo.findOne({
+        where: { user: { id } },
+      })
+    ).token;
+
+    if (!existingToken) {
+      throw new UnauthorizedException('Existing refresh token not found');
+    }
+    const user = await this.refreshTokenRepo.findOne({
+      where: { user: { id } },
+      relations: ['user'],
+    });
+
+    const isMatch = await bcrypt.compare(refreshToken, existingToken);
+    if (!isMatch) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    return user;
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡
