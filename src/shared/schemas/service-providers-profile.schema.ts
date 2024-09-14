@@ -52,6 +52,7 @@ export const freelancerProfileSchema = {
       type: 'object',
       properties: {
         degree: { type: 'string', example: 'BSc in Computer Science' },
+        education: { type: 'string', example: 'Computer Science' },
         certifications: {
           type: 'array',
           items: { type: 'string' },

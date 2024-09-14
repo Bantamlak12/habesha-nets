@@ -92,7 +92,7 @@ export class AuthService {
       isVerified: user.isVerified,
     };
     return this.jwtService.sign(payload, {
-      expiresIn: '24h',
+      expiresIn: '48h',
     });
   }
 

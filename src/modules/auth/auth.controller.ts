@@ -63,36 +63,6 @@ export class AuthController {
     private readonly refreshTokenRepo: Repository<RefreshToken>,
   ) {}
 
-  // async returnRepository(id: string) {
-  //   const userType = await this.authService.findUserTypeById(id);
-  //   if (!userType) {
-  //     throw new NotFoundException('User not found');
-  //   }
-
-  //   let repository: Repository<any>;
-  //   switch (userType) {
-  //     case 'employer':
-  //       repository = this.employerRepo;
-  //       break;
-  //     case 'serviceProvider':
-  //       repository = this.serviceProviderRepo;
-  //       break;
-  //     case 'propertyOwner':
-  //       repository = this.propertyOwnerRepo;
-  //       break;
-  //     case 'propertyRenter':
-  //       repository = this.propertyRenterRepo;
-  //       break;
-  //     case 'babySitterFinder':
-  //       repository = this.babySitterFinderRepo;
-  //       break;
-  //     default:
-  //       throw new BadRequestException('Invalid user type');
-  //   }
-
-  //   return repository;
-  // }
-
   // REGISTER A NEW USER
   @Post('/signup')
   @ApiOperation({ summary: 'This endpoint is used to create an account.' })
