@@ -12,7 +12,7 @@ export class CustomMailerService {
     this.transporter = nodemailer.createTransport({
       host: this.config.get<string>('MAIL_HOST'),
       port: this.config.get<number>('MAIL_PORT'),
-      //   secure: this.config.get<string>('MAIL_SECURE'),
+      secure: process.env.NODE_ENV === 'development' ? false : true,
       auth: {
         user: this.config.get<string>('MAIL_USERNAME'),
         pass: this.config.get<string>('MAIL_PASSWORD'),
