@@ -150,8 +150,16 @@ export class AuthController {
     const user = req.user;
     const tokens = await this.authService.signInUser(user);
 
+    const userAgent = req.headers['user-agent'] || 'Unkown Device';
+    const ipAddress = req.ip || 'Unknown IP'; // req.headers['x-forwarded-for']
+
     // Save the refresh token to DB
-    await this.authService.saveRefreshToken(user, tokens.refreshToken);
+    await this.authService.saveRefreshToken(
+      user,
+      tokens.refreshToken,
+      userAgent,
+      ipAddress,
+    );
 
     const cookieOptions: CookieOptions = {
       httpOnly: true,
@@ -186,15 +194,18 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token not found');
     }
 
+    // Validate the refresh token
     const user = await this.authService.validateRefreshToken(refreshToken);
-    // const tokens = this.authService.generateAccessToken(user);
 
-    // return res.status(HttpStatus.OK).json({
-    //   status: 'success',
-    //   statusCode: 200,
-    //   message: 'Token refreshed successfully',
-    // accessToken: tokens.accessToken,
-    // });
+    // If valid, generate a new access token
+    const accessToken = this.authService.generateAccessToken(user);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'Token refreshed successfully',
+      accessToken: accessToken,
+    });
   }
 
   // COMPLETE EMPLOYER PROFILE

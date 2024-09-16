@@ -7,7 +7,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { randomBytes, scrypt as _scrypt } from 'crypto';
+import {
+  randomBytes,
+  scrypt as _scrypt,
+  scryptSync,
+  timingSafeEqual,
+} from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { promisify } from 'util';
@@ -132,7 +137,12 @@ export class AuthService {
     });
   }
 
-  async saveRefreshToken(user: any, refreshToken: string) {
+  async saveRefreshToken(
+    user: any,
+    refreshToken: string,
+    userAgent: string,
+    ipAddress: string,
+  ) {
     const currentDate = new Date();
     const expiresAt = new Date(currentDate);
     expiresAt.setMonth(currentDate.getMonth() + 1);
@@ -142,6 +152,8 @@ export class AuthService {
       token: hashedToken,
       userType: user.userType,
       isVerified: user.isVerified,
+      userAgent,
+      ipAddress,
       expiresAt: expiresAt,
       user,
     });
@@ -162,25 +174,36 @@ export class AuthService {
     }
 
     const userId = payload['sub'];
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+    });
 
-    // const existingToken = await this.refreshTokenRepo.findOne({
-    //   where: { token: hashedToken },
-    // });
+    const userTokens = await this.refreshTokenRepo.find({
+      where: { user: { id: userId } },
+    });
 
-    // if (!existingToken) {
-    //   throw new UnauthorizedException('Existing refresh token not found');
-    // }
-    // const user = await this.refreshTokenRepo.findOne({
-    //   where: { user: { id: userId } },
-    //   relations: ['user'],
-    // });
+    for (const refreshTokenRecored of userTokens) {
+      const storedToken = refreshTokenRecored.token;
+      const [salt, storedHash] = storedToken.split('.');
 
-    // const isMatch = await bcrypt.compare(refreshToken, existingToken);
-    // if (!isMatch) {
-    //   throw new UnauthorizedException('Invalid or expired token');
-    // }
+      const incomingHash = scryptSync(refreshToken, salt, 32).toString('hex');
 
-    // return user;
+      // Use timingSafeEqual to prevent timing attacks
+      if (
+        timingSafeEqual(
+          Buffer.from(storedHash, 'hex'),
+          Buffer.from(incomingHash, 'hex'),
+        )
+      ) {
+        return {
+          id: user.id,
+          userType: user.userType,
+          isVerified: user.isVerified,
+        };
+      }
+    }
+
+    throw new UnauthorizedException('Invalid refresh token');
   }
 
   async findUserTypeById(id: string): Promise<string> {
