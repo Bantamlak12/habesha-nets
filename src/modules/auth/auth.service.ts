@@ -7,34 +7,26 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { promisify } from 'util';
 import { JwtService } from '@nestjs/jwt';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { Employer } from '../users/entities/employer.entity';
-import { ServiceProvider } from '../users/entities/serviceProvider.entity';
-import { PropertyOwner } from '../users/entities/propertyOwner.entity';
-import { PropertyRenter } from '../users/entities/propertyRenter.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
-import { BabySitterFinder } from '../users/entities/babySitterFinder.entity';
+import { User } from '../users/entities/users.entity';
+
+const scrypt = promisify(_scrypt);
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Employer)
-    private readonly employerRepo: Repository<Employer>,
-    @InjectRepository(ServiceProvider)
-    private readonly serviceProviderRepo: Repository<ServiceProvider>,
-    @InjectRepository(PropertyOwner)
-    private readonly propertyOwnerRepo: Repository<PropertyOwner>,
-    @InjectRepository(PropertyRenter)
-    private readonly propertyRenterRepo: Repository<PropertyRenter>,
-    @InjectRepository(BabySitterFinder)
-    private readonly babySitterFinderRepo: Repository<BabySitterFinder>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
     private readonly jwtService: JwtService,
@@ -58,6 +50,16 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, saltRound);
 
     return hashedPassword;
+  }
+
+  async hashRefreshToken(token: string): Promise<string> {
+    // Generate a salt
+    const salt = randomBytes(8).toString('hex');
+    // Hash the token using scrypt
+    const hash = (await scrypt(token, salt, 32)) as Buffer;
+    const hashedToken = salt + '.' + hash.toString('hex');
+
+    return hashedToken;
   }
 
   // Random 6-digit number generator
@@ -104,7 +106,7 @@ export class AuthService {
       isVerified: user.isVerified,
     };
     return this.jwtService.sign(payload, {
-      expiresIn: '24h',
+      expiresIn: '48h',
     });
   }
 
@@ -119,52 +121,70 @@ export class AuthService {
     });
   }
 
-  async generateRefreshToken(user: any) {
+  generateRefreshToken(user: any) {
     const payload = {
       sub: user.id,
       userType: user.userType,
       isVerified: user.isVerified,
     };
-    const refreshToken = this.jwtService.sign(payload, {
+    return this.jwtService.sign(payload, {
       expiresIn: '7d',
     });
+  }
 
+  async saveRefreshToken(user: any, refreshToken: string) {
     const currentDate = new Date();
     const expiresAt = new Date(currentDate);
     expiresAt.setMonth(currentDate.getMonth() + 1);
 
-    // check if there is exisitng token
-    const existingToken = await this.refreshTokenRepo.findOne({
-      where: { userId: user.id },
+    const hashedToken = await this.hashRefreshToken(refreshToken);
+    const refreshTokenRecord = this.refreshTokenRepo.create({
+      token: hashedToken,
+      userType: user.userType,
+      isVerified: user.isVerified,
+      expiresAt: expiresAt,
+      user,
     });
-
-    if (existingToken) {
-      // Update the existing token
-      existingToken.token = refreshToken;
-      existingToken.expiresAt = expiresAt;
-      await this.refreshTokenRepo.save(existingToken);
-    } else {
-      const refreshTokenRecord = this.refreshTokenRepo.create({
-        userId: user.id,
-        token: refreshToken,
-        userType: user.userType,
-        isVerified: user.isVerfied,
-        expiresAt: expiresAt,
-      });
-      await this.refreshTokenRepo.save(refreshTokenRecord);
-    }
+    await this.refreshTokenRepo.save(refreshTokenRecord);
 
     return refreshToken;
   }
 
-  async findUserTypeById(id: string): Promise<string> {
-    const user =
-      (await this.employerRepo.findOne({ where: { id } })) ||
-      (await this.serviceProviderRepo.findOne({ where: { id } })) ||
-      (await this.propertyOwnerRepo.findOne({ where: { id } })) ||
-      (await this.propertyRenterRepo.findOne({ where: { id } })) ||
-      (await this.babySitterFinderRepo.findOne({ where: { id } }));
+  async validateRefreshToken(refreshToken: string) {
+    // Verify the refresh tokens validity
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
 
+    const userId = payload['sub'];
+
+    // const existingToken = await this.refreshTokenRepo.findOne({
+    //   where: { token: hashedToken },
+    // });
+
+    // if (!existingToken) {
+    //   throw new UnauthorizedException('Existing refresh token not found');
+    // }
+    // const user = await this.refreshTokenRepo.findOne({
+    //   where: { user: { id: userId } },
+    //   relations: ['user'],
+    // });
+
+    // const isMatch = await bcrypt.compare(refreshToken, existingToken);
+    // if (!isMatch) {
+    //   throw new UnauthorizedException('Invalid or expired token');
+    // }
+
+    // return user;
+  }
+
+  async findUserTypeById(id: string): Promise<string> {
+    const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -173,29 +193,7 @@ export class AuthService {
   }
 
   async findUserByEmailOrPhone(email: string, phoneNumber: string) {
-    let user: any;
-
-    user = await this.employerRepo.findOne({
-      where: [{ email }, { phoneNumber }],
-    });
-    if (user) return user;
-
-    user = await this.serviceProviderRepo.findOne({
-      where: [{ email }, { phoneNumber }],
-    });
-    if (user) return user;
-
-    user = await this.propertyOwnerRepo.findOne({
-      where: [{ email }, { phoneNumber }],
-    });
-    if (user) return user;
-
-    user = await this.propertyRenterRepo.findOne({
-      where: [{ email }, { phoneNumber }],
-    });
-    if (user) return user;
-
-    user = await this.babySitterFinderRepo.findOne({
+    const user = await this.userRepo.findOne({
       where: [{ email }, { phoneNumber }],
     });
     if (user) return user;
@@ -205,107 +203,28 @@ export class AuthService {
   // APPLICATION RELATED METHODS
   /****************************************************************************************/
 
-  // ⁡⁢⁢𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
+  // ⁡⁢⁢⁡⁢⁢⁢𝗜𝗡𝗜𝗧𝗜𝗔𝗟 𝗦𝗜𝗚𝗡𝗨𝗣⁡
   async signup(body: any) {
-    if (body.userType === 'employer') {
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
-      );
-      // Create the user and save to the database
-      const user = this.employerRepo.create({
-        userType: body.userType,
-        email: body.email,
-        phoneNumber: body.phoneNumber,
-        password: hashedPassword,
-      });
-      await this.employerRepo.save(user);
-      await this.generateAndSendVerificationCode(this.employerRepo, user.id);
-      return user;
-    } else if (body.userType === 'serviceProvider') {
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
-      );
-      // Create the user and save to the database
-      const user = this.serviceProviderRepo.create({
-        userType: body.userType,
-        email: body.email,
-        phoneNumber: body.phoneNumber,
-        password: hashedPassword,
-      });
-      await this.serviceProviderRepo.save(user);
-      await this.generateAndSendVerificationCode(
-        this.serviceProviderRepo,
-        user.id,
-      );
-      return user;
-    } else if (body.userType === 'propertyOwner') {
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
-      );
-      // Create the user and save to the database
-      const user = this.propertyOwnerRepo.create({
-        userType: body.userType,
-        email: body.email,
-        phoneNumber: body.phoneNumber,
-        password: hashedPassword,
-      });
-      await this.propertyOwnerRepo.save(user);
-      await this.generateAndSendVerificationCode(
-        this.propertyOwnerRepo,
-        user.id,
-      );
-      return user;
-    } else if (body.userType === 'propertyRenter') {
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
-      );
-      // Create the user and save to the database
-      const user = this.propertyRenterRepo.create({
-        userType: body.userType,
-        email: body.email,
-        phoneNumber: body.phoneNumber,
-        password: hashedPassword,
-      });
-      await this.propertyRenterRepo.save(user);
-      await this.generateAndSendVerificationCode(
-        this.propertyRenterRepo,
-        user.id,
-      );
-      return user;
-    } else if (body.userType === 'babySitterFinder') {
-      const hashedPassword = await this.hashPassword(
-        body.password,
-        body.confirmPassword,
-      );
-      // Create the user and save to the database
-      const user = this.babySitterFinderRepo.create({
-        userType: body.userType,
-        email: body.email,
-        phoneNumber: body.phoneNumber,
-        password: hashedPassword,
-      });
-      await this.babySitterFinderRepo.save(user);
-      await this.generateAndSendVerificationCode(
-        this.babySitterFinderRepo,
-        user.id,
-      );
-      return user;
-    } else {
-      return false;
-    }
+    const hashedPassword = await this.hashPassword(
+      body.password,
+      body.confirmPassword,
+    );
+    // Create the user and save to the database
+    const user = this.userRepo.create({
+      userType: body.userType,
+      email: body.email,
+      phoneNumber: body.phoneNumber,
+      password: hashedPassword,
+    });
+    await this.userRepo.save(user);
+    await this.generateAndSendVerificationCode(user.id);
+    return user;
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝗔𝗖𝗖𝗢𝗨𝗡𝗧 𝗩𝗘𝗥𝗜𝗙𝗜𝗖𝗔𝗧𝗜𝗢𝗡⁡
   // Send 6-digit SMS or email verification code to the user
-  async generateAndSendVerificationCode(
-    repo: Repository<any>,
-    userId: string,
-  ): Promise<void> {
-    const user = await repo.findOne({
+  async generateAndSendVerificationCode(userId: string): Promise<void> {
+    const user = await this.userRepo.findOne({
       where: { id: userId },
     });
 
@@ -324,7 +243,7 @@ export class AuthService {
       Date.now() + expiryTime * 60 * 1000,
     );
 
-    await repo.update(userId, {
+    await this.userRepo.update(userId, {
       verificationCode,
       verificationCodeExpires,
     });
@@ -359,8 +278,8 @@ export class AuthService {
     }
   }
 
-  async verifyAccount(repo: Repository<any>, userId: string, code: string) {
-    const user = await repo.findOne({ where: { id: userId } });
+  async verifyAccount(userId: string, code: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Employer not found');
     }
@@ -377,7 +296,7 @@ export class AuthService {
       throw new BadRequestException('Verification code has expired');
     }
 
-    await repo.update(userId, {
+    await this.userRepo.update(userId, {
       isVerified: true,
       verificationCode: null,
       verificationCodeExpires: null,
@@ -389,20 +308,18 @@ export class AuthService {
   async signInUser(user: any) {
     // Generate JWT tokens and return
     const accessToken = this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user);
-
+    const refreshToken = this.generateRefreshToken(user);
     return { accessToken, refreshToken };
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡
   async completeEmployerProfile(
-    repo: Repository<any>,
     userId: string,
     body: any,
     profileImg: Express.Multer.File,
   ) {
     // Check if the user exists
-    const user = await repo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -419,7 +336,7 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = await repo.update(userId, {
+    const updatedUser = await this.userRepo.update(userId, {
       firstName: capitalizeString(body.firstName),
       lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
@@ -431,7 +348,7 @@ export class AuthService {
       bio: body.bio,
     });
 
-    await repo.update(userId, { isProfileCompleted: true });
+    await this.userRepo.update(userId, { isProfileCompleted: true });
 
     // ⁡⁢⁢⁢⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
 
@@ -442,14 +359,13 @@ export class AuthService {
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗦𝗘𝗥𝗩𝗜𝗖𝗘 𝗣𝗥𝗢𝗩𝗜𝗗𝗘𝗥𝗦⁡
   async completeServiceProvidersProfile(
-    repo: Repository<any>,
     userId: string,
     body: any,
     profileImg: Express.Multer.File,
     portfolioFiles: Express.Multer.File[],
   ) {
     // Check if the user exists
-    const user = await repo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -481,7 +397,7 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = await repo.update(userId, {
+    const updatedUser = await this.userRepo.update(userId, {
       firstName: capitalizeString(body.firstName),
       lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
@@ -501,7 +417,7 @@ export class AuthService {
       hourlyRate: body.hourlyRate,
     });
 
-    await repo.update(userId, { isProfileCompleted: true });
+    await this.userRepo.update(userId, { isProfileCompleted: true });
 
     // ⁡⁢⁢⁢⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
 
@@ -512,13 +428,12 @@ export class AuthService {
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗢𝗪𝗡𝗘𝗥𝗦⁡
   async completePropertyOwnersProfile(
-    repo: Repository<any>,
     userId: string,
     body: any,
     profileImg: Express.Multer.File,
   ) {
     // Check if the user exists
-    const user = await repo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -535,7 +450,7 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = await repo.update(userId, {
+    const updatedUser = await this.userRepo.update(userId, {
       firstName: capitalizeString(body.firstName),
       lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
@@ -547,7 +462,7 @@ export class AuthService {
       propertyType: body.propertyType,
     });
 
-    await repo.update(userId, { isProfileCompleted: true });
+    await this.userRepo.update(userId, { isProfileCompleted: true });
 
     // ⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
 
@@ -558,13 +473,12 @@ export class AuthService {
 
   // ⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗥𝗘𝗡𝗧𝗘𝗥⁡
   async completePropertyRenterProfile(
-    repo: Repository<any>,
     userId: string,
     body: any,
     profileImg: Express.Multer.File,
   ) {
     // Check if the user exists
-    const user = await repo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -581,7 +495,7 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = await repo.update(userId, {
+    const updatedUser = await this.userRepo.update(userId, {
       firstName: capitalizeString(body.firstName),
       lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
@@ -593,7 +507,7 @@ export class AuthService {
       budgetRange: body.budgetRange,
     });
 
-    await repo.update(userId, { isProfileCompleted: true });
+    await this.userRepo.update(userId, { isProfileCompleted: true });
 
     // ⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
 
@@ -604,13 +518,12 @@ export class AuthService {
 
   // ⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 𝗕𝗔𝗕𝗬 𝗦𝗜𝗧𝗧𝗘𝗥 𝗙𝗜𝗡𝗗𝗘𝗥⁡
   async completeBabySitterFinderProfile(
-    repo: Repository<any>,
     userId: string,
     body: any,
     profileImg: Express.Multer.File,
   ) {
     // Check if the user exists
-    const user = await repo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -627,7 +540,7 @@ export class AuthService {
     }
 
     // Update the fields
-    const updatedUser = await repo.update(userId, {
+    const updatedUser = await this.userRepo.update(userId, {
       firstName: capitalizeString(body.firstName),
       lastName: capitalizeString(body.lastName),
       email: user.email ? user.email : body.email,
@@ -638,7 +551,7 @@ export class AuthService {
       location: body.location,
     });
 
-    await repo.update(userId, { isProfileCompleted: true });
+    await this.userRepo.update(userId, { isProfileCompleted: true });
 
     // ⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
 

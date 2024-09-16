@@ -1,7 +1,9 @@
+import { User } from 'src/modules/users/entities/users.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -11,8 +13,10 @@ export class RefreshToken {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  userId: string;
+  @ManyToOne(() => User, (user) => user.refreshTokens, {
+    onDelete: 'CASCADE',
+  })
+  user: User;
 
   @Column()
   userType: string;

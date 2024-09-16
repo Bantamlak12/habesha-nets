@@ -15,6 +15,7 @@ import {
   UseGuards,
   UseInterceptors,
   Patch,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { CookieOptions, Response as ExpressResponse } from 'express';
 import { Request as ExpressRequest } from 'express';
@@ -39,11 +40,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { Employer } from '../users/entities/employer.entity';
-import { ServiceProvider } from '../users/entities/serviceProvider.entity';
-import { PropertyOwner } from '../users/entities/propertyOwner.entity';
-import { PropertyRenter } from '../users/entities/propertyRenter.entity';
-import { BabySitterFinder } from '../users/entities/babySitterFinder.entity';
 import { employerProfileSchema } from 'src/shared/schemas/employer-profile.schema';
 import { freelancerProfileSchema } from 'src/shared/schemas/service-providers-profile.schema';
 import { PropertyOwnersProfileSchema } from 'src/shared/schemas/property-owner-profile.schema';
@@ -53,53 +49,19 @@ import { BabySitterFinderDto } from './dto/baby-sitter-finder.dto';
 import { PropertyOwnerDto } from './dto/property-owner.dto';
 import { LoginDto } from './dto/signin-user.dto';
 import { PropertyRenterDto } from './dto/property-renter.dto';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { User } from '../users/entities/users.entity';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    @InjectRepository(Employer)
-    private readonly employerRepo: Repository<Employer>,
-    @InjectRepository(ServiceProvider)
-    private readonly serviceProviderRepo: Repository<ServiceProvider>,
-    @InjectRepository(PropertyOwner)
-    private readonly propertyOwnerRepo: Repository<PropertyOwner>,
-    @InjectRepository(PropertyRenter)
-    private readonly propertyRenterRepo: Repository<PropertyRenter>,
-    @InjectRepository(BabySitterFinder)
-    private readonly babySitterFinderRepo: Repository<BabySitterFinder>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
   ) {}
-
-  async returnRepository(id: string) {
-    const userType = await this.authService.findUserTypeById(id);
-    if (!userType) {
-      throw new NotFoundException('User not found');
-    }
-
-    let repository: Repository<any>;
-    switch (userType) {
-      case 'employer':
-        repository = this.employerRepo;
-        break;
-      case 'serviceProvider':
-        repository = this.serviceProviderRepo;
-        break;
-      case 'propertyOwner':
-        repository = this.propertyOwnerRepo;
-        break;
-      case 'propertyRenter':
-        repository = this.propertyRenterRepo;
-        break;
-      case 'babySitterFinder':
-        repository = this.babySitterFinderRepo;
-        break;
-      default:
-        throw new BadRequestException('Invalid user type');
-    }
-
-    return repository;
-  }
 
   // REGISTER A NEW USER
   @Post('/signup')
@@ -113,11 +75,7 @@ export class AuthController {
     @Response() res: ExpressResponse,
   ) {
     // 1) Check if the user exists
-    await this.authService.checkUser(this.employerRepo, body);
-    await this.authService.checkUser(this.serviceProviderRepo, body);
-    await this.authService.checkUser(this.propertyOwnerRepo, body);
-    await this.authService.checkUser(this.propertyRenterRepo, body);
-    await this.authService.checkUser(this.babySitterFinderRepo, body);
+    await this.authService.checkUser(this.userRepo, body);
 
     // 2) Register the user and get the user
     const user = await this.authService.signup(body);
@@ -147,8 +105,7 @@ export class AuthController {
     @Request() req: ExpressRequest,
   ) {
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
-    await this.authService.generateAndSendVerificationCode(repository, id);
+    await this.authService.generateAndSendVerificationCode(id);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
@@ -171,8 +128,7 @@ export class AuthController {
     @Request() req: ExpressRequest,
   ) {
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
-    await this.authService.verifyAccount(repository, id, body.verificationCode);
+    await this.authService.verifyAccount(id, body.verificationCode);
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
@@ -194,6 +150,9 @@ export class AuthController {
     const user = req.user;
     const tokens = await this.authService.signInUser(user);
 
+    // Save the refresh token to DB
+    await this.authService.saveRefreshToken(user, tokens.refreshToken);
+
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       secure: true,
@@ -211,6 +170,33 @@ export class AuthController {
     });
   }
 
+  @Post('refresh-token')
+  @ApiOperation({
+    summary:
+      'Refresh the access token using the refresh token stored in cookies.',
+  })
+  @ApiResponse({ status: 200 })
+  async refreshToken(
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const refreshToken = req?.cookies?.['rft'];
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
+    const user = await this.authService.validateRefreshToken(refreshToken);
+    // const tokens = this.authService.generateAccessToken(user);
+
+    // return res.status(HttpStatus.OK).json({
+    //   status: 'success',
+    //   statusCode: 200,
+    //   message: 'Token refreshed successfully',
+    // accessToken: tokens.accessToken,
+    // });
+  }
+
   // COMPLETE EMPLOYER PROFILE
   @Patch('employers/profile/complete')
   @UseGuards(JwtAuthGuard)
@@ -218,7 +204,7 @@ export class AuthController {
   @UseInterceptors(FileInterceptor('profilePicture'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'This endpoint is used to complete customer profile.',
+    summary: 'This endpoint is used to complete employer profile.',
   })
   @ApiBody({ schema: employerProfileSchema })
   @ApiResponse({ status: 201 })
@@ -238,21 +224,15 @@ export class AuthController {
     file?: Express.Multer.File,
   ) {
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
+    const userType = req.user['userType'];
 
-    let user: any;
-    if (repository == this.employerRepo) {
-      user = await this.authService.completeEmployerProfile(
-        repository,
-        id,
-        body,
-        file,
-      );
-    } else {
+    if (userType !== 'employer') {
       throw new BadRequestException(
         `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
       );
     }
+
+    const user = await this.authService.completeEmployerProfile(id, body, file);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -342,22 +322,18 @@ export class AuthController {
     }
 
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
-
-    let user: any;
-    if (repository == this.serviceProviderRepo) {
-      user = await this.authService.completeServiceProvidersProfile(
-        repository,
-        id,
-        body,
-        profilePicture,
-        portfolioFiles,
-      );
-    } else {
+    const userType = req.user['userType'];
+    if (userType !== 'serviceProvider') {
       throw new BadRequestException(
         `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
       );
     }
+    const user = await this.authService.completeServiceProvidersProfile(
+      id,
+      body,
+      profilePicture,
+      portfolioFiles,
+    );
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -406,21 +382,19 @@ export class AuthController {
     }
 
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
+    const userType = req.user['userType'];
 
-    let user: any;
-    if (repository == this.propertyOwnerRepo) {
-      user = await this.authService.completePropertyOwnersProfile(
-        repository,
-        id,
-        body,
-        profilePicture,
-      );
-    } else {
+    if (userType !== 'propertyOwner') {
       throw new BadRequestException(
         `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
       );
     }
+
+    const user = await this.authService.completePropertyOwnersProfile(
+      id,
+      body,
+      profilePicture,
+    );
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -469,21 +443,17 @@ export class AuthController {
     }
 
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
-
-    let user: any;
-    if (repository == this.propertyRenterRepo) {
-      user = await this.authService.completePropertyRenterProfile(
-        repository,
-        id,
-        body,
-        profilePicture,
-      );
-    } else {
+    const userType = req.user['userType'];
+    if (userType !== 'propertyRenter') {
       throw new BadRequestException(
         `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
       );
     }
+    const user = await this.authService.completePropertyRenterProfile(
+      id,
+      body,
+      profilePicture,
+    );
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -532,21 +502,18 @@ export class AuthController {
     }
 
     const id = req.user['sub'];
-    const repository = await this.returnRepository(id);
-
-    let user: any;
-    if (repository == this.babySitterFinderRepo) {
-      user = await this.authService.completeBabySitterFinderProfile(
-        repository,
-        id,
-        body,
-        profilePicture,
-      );
-    } else {
+    const userType = req.user['userType'];
+    if (userType !== 'babySitterFinder') {
       throw new BadRequestException(
         `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
       );
     }
+
+    const user = await this.authService.completeBabySitterFinderProfile(
+      id,
+      body,
+      profilePicture,
+    );
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
