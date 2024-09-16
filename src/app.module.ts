@@ -28,9 +28,9 @@ import { User } from './modules/users/entities/users.entity';
         entities: [User, RefreshToken],
         synchronize: true,
         ssl:
-          config.get<string>('NODE_ENV') !== 'development'
-            ? { rejectUnauthorized: true }
-            : false,
+          process.env.NODE_ENV === 'development'
+            ? { rejectUnauthorized: false }
+            : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
