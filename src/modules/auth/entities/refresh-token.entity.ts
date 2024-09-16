@@ -27,6 +27,12 @@ export class RefreshToken {
   @Column()
   token: string;
 
+  @Column({ nullable: true })
+  userAgent: string;
+
+  @Column({ nullable: true })
+  ipAddress: string;
+
   @Column({ default: false })
   isRevoked: boolean;
 
