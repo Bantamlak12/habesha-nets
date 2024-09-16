@@ -180,26 +180,21 @@ export class AuthController {
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
-    const refreshToken = req.cookies['rft'];
+    const refreshToken = req?.cookies?.['rft'];
 
-    await this.authService.validateRefreshToken(refreshToken);
-    // const tokens = await this.authService.signInUser(user);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
 
-    // const cookieOptions: CookieOptions = {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: 'strict',
-    //   maxAge: 7 * 24 * 60 * 60 * 1000,
-    // };
+    const user = await this.authService.validateRefreshToken(refreshToken);
+    // const tokens = this.authService.generateAccessToken(user);
 
-    // res.cookie('rft', tokens.refreshToken, cookieOptions);
-
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      // statusCode: 200,
-      // message: 'You are successfully signed in.',
-      // accessToken: tokens.accessToken,
-    });
+    // return res.status(HttpStatus.OK).json({
+    //   status: 'success',
+    //   statusCode: 200,
+    //   message: 'Token refreshed successfully',
+    // accessToken: tokens.accessToken,
+    // });
   }
 
   // COMPLETE EMPLOYER PROFILE

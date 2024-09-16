@@ -7,8 +7,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomBytes, scrypt as _scrypt } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { promisify } from 'util';
 import { JwtService } from '@nestjs/jwt';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
@@ -17,6 +19,8 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { User } from '../users/entities/users.entity';
+
+const scrypt = promisify(_scrypt);
 
 @Injectable()
 export class AuthService {
@@ -46,6 +50,16 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, saltRound);
 
     return hashedPassword;
+  }
+
+  async hashRefreshToken(token: string): Promise<string> {
+    // Generate a salt
+    const salt = randomBytes(8).toString('hex');
+    // Hash the token using scrypt
+    const hash = (await scrypt(token, salt, 32)) as Buffer;
+    const hashedToken = salt + '.' + hash.toString('hex');
+
+    return hashedToken;
   }
 
   // Random 6-digit number generator
@@ -123,7 +137,7 @@ export class AuthService {
     const expiresAt = new Date(currentDate);
     expiresAt.setMonth(currentDate.getMonth() + 1);
 
-    const hashedToken = await this.hashPassword(refreshToken, refreshToken);
+    const hashedToken = await this.hashRefreshToken(refreshToken);
     const refreshTokenRecord = this.refreshTokenRepo.create({
       token: hashedToken,
       userType: user.userType,
@@ -137,32 +151,36 @@ export class AuthService {
   }
 
   async validateRefreshToken(refreshToken: string) {
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token not found');
+    // Verify the refresh tokens validity
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    // Check if the refresh token exists in the DB
-    const id = (await this.jwtService.decode(refreshToken))['sub'];
-    const existingToken = (
-      await this.refreshTokenRepo.findOne({
-        where: { user: { id } },
-      })
-    ).token;
+    const userId = payload['sub'];
 
-    if (!existingToken) {
-      throw new UnauthorizedException('Existing refresh token not found');
-    }
-    const user = await this.refreshTokenRepo.findOne({
-      where: { user: { id } },
-      relations: ['user'],
-    });
+    // const existingToken = await this.refreshTokenRepo.findOne({
+    //   where: { token: hashedToken },
+    // });
 
-    const isMatch = await bcrypt.compare(refreshToken, existingToken);
-    if (!isMatch) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
+    // if (!existingToken) {
+    //   throw new UnauthorizedException('Existing refresh token not found');
+    // }
+    // const user = await this.refreshTokenRepo.findOne({
+    //   where: { user: { id: userId } },
+    //   relations: ['user'],
+    // });
 
-    return user;
+    // const isMatch = await bcrypt.compare(refreshToken, existingToken);
+    // if (!isMatch) {
+    //   throw new UnauthorizedException('Invalid or expired token');
+    // }
+
+    // return user;
   }
 
   async findUserTypeById(id: string): Promise<string> {
