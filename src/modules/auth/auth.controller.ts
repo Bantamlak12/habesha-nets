@@ -83,7 +83,17 @@ export class AuthController {
     // 3) Generate verification token
     const verificationToken = this.authService.generateVerificationToken(user);
 
-    // 4) Send response
+    // 4) Set access token to cookie
+    const cookieOptionsTact: CookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    };
+
+    res.cookie('tact', verificationToken, cookieOptionsTact);
+
+    // 5) Send response
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       statusCode: 201,
@@ -161,14 +171,22 @@ export class AuthController {
       ipAddress,
     );
 
-    const cookieOptions: CookieOptions = {
+    const cookieOptionsRft: CookieOptions = {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
 
-    res.cookie('rft', tokens.refreshToken, cookieOptions);
+    const cookieOptionsAct: CookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    };
+
+    res.cookie('rft', tokens.refreshToken, cookieOptionsRft);
+    res.cookie('act', tokens.accessToken, cookieOptionsAct);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
@@ -199,6 +217,15 @@ export class AuthController {
 
     // If valid, generate a new access token
     const accessToken = this.authService.generateAccessToken(user);
+
+    const cookieOptionsAct: CookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    };
+
+    res.cookie('act', accessToken, cookieOptionsAct);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
