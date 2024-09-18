@@ -104,6 +104,22 @@ export class AuthService {
     }
   }
 
+  async checkEmailOrPhoneNumber(body: any) {
+    const userForEmail = await this.userRepo.findOne({
+      where: { email: body.email },
+    });
+    if (body.email === userForEmail?.email) {
+      throw new ConflictException('This email has been used');
+    }
+
+    const userForPhoneNumber = await this.userRepo.findOne({
+      where: { phoneNumber: body.phoneNumber },
+    });
+    if (body.phoneNumber === userForPhoneNumber?.phoneNumber) {
+      throw new ConflictException('This phone number has been used');
+    }
+  }
+
   generateVerificationToken(user: any) {
     const payload = {
       sub: user.id,
@@ -239,7 +255,6 @@ export class AuthService {
       password: hashedPassword,
     });
     await this.userRepo.save(user);
-    await this.generateAndSendVerificationCode(user.id);
     return user;
   }
 
@@ -350,6 +365,8 @@ export class AuthService {
       throw new BadRequestException('Profile is already completed');
     }
 
+    await this.checkEmailOrPhoneNumber(body);
+
     let profileURL: string | undefined;
     if (profileImg && process.env.NODE_ENV === 'development') {
       profileURL = await this.uploadService.uploadFile(profileImg, 'images');
@@ -395,6 +412,8 @@ export class AuthService {
     if (user.isProfileCompleted) {
       throw new BadRequestException('Profile is already completed');
     }
+
+    await this.checkEmailOrPhoneNumber(body);
 
     let profileURL: string | undefined;
     if (profileImg && process.env.NODE_ENV === 'development') {
@@ -464,6 +483,8 @@ export class AuthService {
       throw new BadRequestException('Profile is already completed');
     }
 
+    await this.checkEmailOrPhoneNumber(body);
+
     let profileURL: string | undefined;
     if (profileImg && process.env.NODE_ENV === 'development') {
       profileURL = await this.uploadService.uploadFile(profileImg, 'images');
@@ -509,6 +530,8 @@ export class AuthService {
       throw new BadRequestException('Profile is already completed');
     }
 
+    await this.checkEmailOrPhoneNumber(body);
+
     let profileURL: string | undefined;
     if (profileImg && process.env.NODE_ENV === 'development') {
       profileURL = await this.uploadService.uploadFile(profileImg, 'images');
@@ -553,6 +576,8 @@ export class AuthService {
     if (user.isProfileCompleted) {
       throw new BadRequestException('Profile is already completed');
     }
+
+    await this.checkEmailOrPhoneNumber(body);
 
     let profileURL: string | undefined;
     if (profileImg && process.env.NODE_ENV === 'development') {
