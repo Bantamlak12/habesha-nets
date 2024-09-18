@@ -129,8 +129,7 @@ export class AuthService {
   generateRefreshToken(user: any) {
     const payload = {
       sub: user.id,
-      userType: user.userType,
-      isVerified: user.isVerified,
+      tokenType: 'refresh',
     };
     return this.jwtService.sign(payload, {
       expiresIn: '7d',
@@ -261,7 +260,7 @@ export class AuthService {
     }
 
     const verificationCode = this.generateRandomSixDigit();
-    const expiryTime = 2;
+    const expiryTime = 3;
     const verificationCodeExpires = new Date(
       Date.now() + expiryTime * 60 * 1000,
     );
