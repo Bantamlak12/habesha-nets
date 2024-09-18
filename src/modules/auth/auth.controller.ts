@@ -191,7 +191,7 @@ export class AuthController {
     let redirectUrl: string;
 
     if (isProfileCompleted) {
-      redirectUrl = 'Dashboard URL';
+      redirectUrl = 'You are successfully signed in.';
     } else if (user['userType'] === 'employer') {
       redirectUrl = 'PATCH /auth/employers/profile/complete';
     } else if (user['userType'] === 'serviceProvider') {
