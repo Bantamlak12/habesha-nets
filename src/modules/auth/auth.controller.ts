@@ -207,6 +207,7 @@ export class AuthController {
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
+      isProfileCompleted: user['isProfileCompleted'],
       message: redirectUrl,
     });
   }
