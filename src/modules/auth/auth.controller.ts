@@ -98,7 +98,6 @@ export class AuthController {
       status: 'success',
       statusCode: 201,
       message: 'Verify your account to complete your registration.',
-      verificationToken,
     });
   }
 
@@ -188,11 +187,27 @@ export class AuthController {
     res.cookie('rft', tokens.refreshToken, cookieOptionsRft);
     res.cookie('act', tokens.accessToken, cookieOptionsAct);
 
+    const isProfileCompleted = user['isProfileCompleted'];
+    let redirectUrl: string;
+
+    if (isProfileCompleted) {
+      redirectUrl = 'Dashboard URL';
+    } else if (user['userType'] === 'employer') {
+      redirectUrl = 'PATCH /auth/employers/profile/complete';
+    } else if (user['userType'] === 'serviceProvider') {
+      redirectUrl = 'PATCH /auth/service-providers/profile/complete';
+    } else if (user['userType'] === 'propertyOwner') {
+      redirectUrl = 'PATCH /auth/property-owners/profile/complete';
+    } else if (user['userType'] === 'propertyRenter') {
+      redirectUrl = 'PATCH /auth/property-renters/profile/complete';
+    } else if (user['userType'] === 'babySitterFinder') {
+      redirectUrl = 'PATCH /auth/baby-sitter-finder/profile/complete';
+    }
+
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
-      message: 'You are successfully signed in.',
-      accessToken: tokens.accessToken,
+      message: redirectUrl,
     });
   }
 
@@ -231,7 +246,6 @@ export class AuthController {
       status: 'success',
       statusCode: 200,
       message: 'Token refreshed successfully',
-      accessToken: accessToken,
     });
   }
 
