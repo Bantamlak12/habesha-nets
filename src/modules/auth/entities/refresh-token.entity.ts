@@ -5,7 +5,6 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity('refresh_tokens')
@@ -24,6 +23,9 @@ export class RefreshToken {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Column({ default: false })
+  isRevoked: boolean;
+
   @Column()
   token: string;
 
@@ -33,15 +35,9 @@ export class RefreshToken {
   @Column({ nullable: true })
   ipAddress: string;
 
-  @Column({ default: false })
-  isRevoked: boolean;
-
-  @Column()
-  expiresAt: Date;
-
   @CreateDateColumn()
   createdAt: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @Column()
+  expiresAt: Date;
 }
