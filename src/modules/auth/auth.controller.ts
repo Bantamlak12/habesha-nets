@@ -93,7 +93,19 @@ export class AuthController {
 
     res.cookie('tact', verificationToken, cookieOptionsTact);
 
-    // 5) Send response
+    // 5) Generate and send a verification code
+    try {
+      await this.authService.generateAndSendVerificationCode(user.id);
+    } catch {
+      return res.status(HttpStatus.CREATED).json({
+        status: 'success',
+        statusCode: 201,
+        message:
+          'Registration successful, but there was an issue sending the verification code. Please resend the verification code.',
+      });
+    }
+
+    // 6) Send response
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
       statusCode: 201,

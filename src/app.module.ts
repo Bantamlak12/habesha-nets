@@ -9,6 +9,7 @@ import { SmsModule } from './shared/sms/sms.module';
 import { UploadModule } from './shared/upload/upload.module';
 import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
 import { User } from './modules/users/entities/users.entity';
+import { PaypalModule } from './modules/paypal/paypal.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { User } from './modules/users/entities/users.entity';
     }),
     AuthModule,
     UsersModule,
+    PaypalModule,
     SmsModule,
     UploadModule,
   ],
