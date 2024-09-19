@@ -9,11 +9,6 @@ import { SmsModule } from './shared/sms/sms.module';
 import { UploadModule } from './shared/upload/upload.module';
 import { RefreshToken } from './modules/auth/entities/refresh-token.entity';
 import { User } from './modules/users/entities/users.entity';
-import { PaypalModule } from './modules/paypal/paypal.module';
-import { BillingPlan } from './modules/paypal/entities/billing.entity';
-import { Product } from './modules/paypal/entities/product.entity';
-import { Subscription } from 'rxjs';
-import { OAuth2Token } from './modules/paypal/entities/token.entity';
 
 @Module({
   imports: [
@@ -30,14 +25,7 @@ import { OAuth2Token } from './modules/paypal/entities/token.entity';
         username: config.get<string>('DATABASE_USERNAME'),
         password: config.get<string>('DATABASE_PASSWORD'),
         database: config.get<string>('DATABASE_NAME'),
-        entities: [
-          User,
-          RefreshToken,
-          BillingPlan,
-          Product,
-          Subscription,
-          OAuth2Token,
-        ],
+        entities: [User, RefreshToken],
         synchronize: true,
         ssl:
           process.env.NODE_ENV === 'development'
@@ -47,7 +35,6 @@ import { OAuth2Token } from './modules/paypal/entities/token.entity';
     }),
     AuthModule,
     UsersModule,
-    PaypalModule,
     SmsModule,
     UploadModule,
   ],
