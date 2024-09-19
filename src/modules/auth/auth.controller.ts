@@ -200,27 +200,20 @@ export class AuthController {
     res.cookie('act', tokens.accessToken, cookieOptionsAct);
 
     const isProfileCompleted = user['isProfileCompleted'];
-    let redirectUrl: string;
+    let message: string;
 
     if (isProfileCompleted) {
-      redirectUrl = 'You are successfully signed in.';
-    } else if (user['userType'] === 'employer') {
-      redirectUrl = 'PATCH /auth/employers/profile/complete';
-    } else if (user['userType'] === 'serviceProvider') {
-      redirectUrl = 'PATCH /auth/service-providers/profile/complete';
-    } else if (user['userType'] === 'propertyOwner') {
-      redirectUrl = 'PATCH /auth/property-owners/profile/complete';
-    } else if (user['userType'] === 'propertyRenter') {
-      redirectUrl = 'PATCH /auth/property-renters/profile/complete';
-    } else if (user['userType'] === 'babySitterFinder') {
-      redirectUrl = 'PATCH /auth/baby-sitter-finder/profile/complete';
+      message = 'You are successfully signed in.';
+    } else {
+      message = 'You must complete your profile.';
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
       isProfileCompleted: user['isProfileCompleted'],
-      message: redirectUrl,
+      userType: user['userType'],
+      message,
     });
   }
 
