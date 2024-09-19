@@ -4,41 +4,47 @@ import {
   ValidationArguments,
   ValidatorConstraint,
   ValidatorConstraintInterface,
+  isEmail,
 } from 'class-validator';
+
+// Regular expression for phone number validation (international format)
+const phoneNumberRegex = /^[+]*[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/;
 
 @ValidatorConstraint({ async: false })
 class EmailOrPhoneConstraint implements ValidatorConstraintInterface {
-  validate(_: any, args: ValidationArguments) {
+  validate(value: any, args: ValidationArguments) {
     const obj = args.object as any;
-    const hasEmail = !!obj.email;
-    const hasPhoneNumber = !!obj.phoneNumber;
 
-    return (hasEmail || hasPhoneNumber) && !(hasEmail && hasPhoneNumber);
+    if (typeof value !== 'string') {
+      return false;
+    }
+
+    const isEmailValid = isEmail(value);
+    const isPhoneNumberValid = phoneNumberRegex.test(value);
+
+    // Assign the value to the corresponding field
+    if (isEmailValid) {
+      obj.email = value;
+      obj.phoneNumber = undefined;
+    } else if (isPhoneNumberValid) {
+      obj.phoneNumber = value;
+      obj.email = undefined;
+    }
+
+    return isEmailValid || isPhoneNumberValid;
   }
 
   defaultMessage(args: ValidationArguments) {
-    const obj = args.object as any;
-    const hasEmail = !!obj.email;
-    const hasPhoneNumber = !!obj.phoneNumber;
-
-    if (!hasEmail && !hasPhoneNumber) {
-      return 'Either email or phone number must be provided.';
-    }
-
-    if (hasEmail && hasPhoneNumber) {
-      return 'You must provide either an email or phone number, but not both.';
-    }
-
-    return '';
+    return 'Please provide either a valid email or phone number';
   }
 }
 
 export function IsEmailOrPhone(validationOptions?: ValidatorOptions) {
-  return function (constructor: new (...args: any[]) => any) {
+  return function (object: Object, propertyName: string) {
     registerDecorator({
       name: 'isEmailOrPhone',
-      target: constructor,
-      propertyName: '',
+      target: object.constructor,
+      propertyName: propertyName,
       options: validationOptions,
       validator: EmailOrPhoneConstraint,
     });
