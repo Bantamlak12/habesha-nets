@@ -258,8 +258,6 @@ export class PaypalService {
     let subscriptionPlan: string | null = null;
 
     const subscriptionId = await this.billingRepo.find();
-    console.log(userId);
-    console.log(subscriptionId);
     //   if (parameterId === 1) {
     //     subscriptionId = process.env.Month_1_Subscription_ID;
     //     subscriptionPlan = 'monthly';

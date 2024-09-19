@@ -1,6 +1,6 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { PaypalController } from './paypal.controller';
 import { PaypalService } from './paypal.service';
@@ -10,7 +10,6 @@ import { Product } from './entities/product.entity';
 import { Subscription } from 'rxjs';
 import { OAuth2Token } from './entities/token.entity';
 import { AuthModule } from '../auth/auth.module';
-import { JwtModule, JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -20,7 +19,7 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
     AuthModule,
   ],
   controllers: [PaypalController],
-  providers: [PaypalService, CustomMailerService, JwtService],
+  providers: [PaypalService, CustomMailerService],
   exports: [PaypalService],
 })
 export class PaypalModule {}
