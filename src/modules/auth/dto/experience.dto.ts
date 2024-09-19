@@ -29,7 +29,6 @@ export class ExperienceDto {
   startDate?: Date;
 
   @IsOptional()
-  @IsDateString()
   @ApiProperty({ example: '2023-01-01' })
-  endDate?: Date;
+  endDate?: Date | string;
 }

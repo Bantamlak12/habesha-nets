@@ -21,7 +21,7 @@ interface Experience {
   responsibilities: string[];
   company?: string;
   startDate?: Date;
-  endDate?: Date;
+  endDate?: Date | string;
 }
 
 @Entity('users')
