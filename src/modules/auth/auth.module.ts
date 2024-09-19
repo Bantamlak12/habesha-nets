@@ -11,6 +11,7 @@ import { UploadModule } from 'src/shared/upload/upload.module';
 import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { User } from '../users/entities/users.entity';
     SmsModule,
     UploadModule,
   ],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtAuthGuard, JwtStrategy],
   controllers: [AuthController],
+  exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

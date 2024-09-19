@@ -7,12 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import {
-  randomBytes,
-  scrypt as _scrypt,
-  scryptSync,
-  timingSafeEqual,
-} from 'crypto';
+import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { promisify } from 'util';
@@ -24,21 +19,30 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { User } from '../users/entities/users.entity';
+import { ConfigService } from '@nestjs/config';
 
-const scrypt = promisify(_scrypt);
+const scrypt = promisify(crypto.scrypt);
 
 @Injectable()
 export class AuthService {
+  private readonly algorithm: string = 'aes-256-cbc';
+  private readonly key: any;
+  private readonly iv: any;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
+    private config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
     private readonly uploadService: UploadService,
-  ) {}
+  ) {
+    this.key = Buffer.from(config.get<string>('PAYPAL_TOKEN_KEY'), 'hex');
+    this.iv = Buffer.from(config.get<string>('PAYPAL_TOKEN_IV'), 'hex');
+  }
   /****************************************************************************************/
   // COMMONLY USED METHODS
   /****************************************************************************************/
@@ -59,12 +63,30 @@ export class AuthService {
 
   async hashRefreshToken(token: string): Promise<string> {
     // Generate a salt
-    const salt = randomBytes(8).toString('hex');
+    const salt = crypto.randomBytes(8).toString('hex');
     // Hash the token using scrypt
     const hash = (await scrypt(token, salt, 32)) as Buffer;
     const hashedToken = salt + '.' + hash.toString('hex');
 
     return hashedToken;
+  }
+
+  async encryptPaypalToken(token: string) {
+    const cipher = crypto.createCipheriv(this.algorithm, this.key, this.iv);
+    let encrypted = cipher.update(token, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+
+    return `${this.iv.toString('hex')}:${encrypted}`;
+  }
+
+  async decyptPaypalToken(encyptedToken: string) {
+    const [ivHex, encrypted] = encyptedToken.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const decipher = crypto.createDecipheriv(this.algorithm, this.key, iv);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
   }
 
   // Random 6-digit number generator
@@ -201,11 +223,13 @@ export class AuthService {
       const storedToken = refreshTokenRecored.token;
       const [salt, storedHash] = storedToken.split('.');
 
-      const incomingHash = scryptSync(refreshToken, salt, 32).toString('hex');
+      const incomingHash = crypto
+        .scryptSync(refreshToken, salt, 32)
+        .toString('hex');
 
       // Use timingSafeEqual to prevent timing attacks
       if (
-        timingSafeEqual(
+        crypto.timingSafeEqual(
           Buffer.from(storedHash, 'hex'),
           Buffer.from(incomingHash, 'hex'),
         )
