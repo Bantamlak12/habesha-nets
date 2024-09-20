@@ -374,4 +374,8 @@ export class PaypalService {
       );
     }
   }
+
+  async updateSubscriptionStatus(subscriptionId: string, status: string, status_update_time: Date): Promise<void> {
+    await this.subscriptionRepository.update({ id: subscriptionId }, { status,  status_update_time });
+  }
 }
