@@ -216,9 +216,7 @@ export class PaypalService {
       const response = await lastValueFrom(
         this.httpService.post(paypalUrlBillingPlan, data, requestConfig),
       );
-      this.logger.log('Billing plan created successfully');
       const billingPlanData = response.data;
-      this.logger.log('Billing plan data:', billingPlanData);
 
       const billing = new BillingPlan();
       billing.id = billingPlanData.id;
@@ -298,14 +296,14 @@ export class PaypalService {
         email_address: user.email,
         shipping_address: {
           name: { full_name: `${user.firstName} ${user.lastName}` },
-          // address: {
-          //   address_line_1: '2211 N First Street',
-          //   address_line_2: 'Building 17',
-          //   admin_area_2: 'San Jose',
-          //   admin_area_1: 'CA',
-          //   postal_code: '95131',
-          //   country_code: 'US',
-          // },
+          address: {
+            address_line_1: '2211 N First Street',
+            address_line_2: 'Building 17',
+            admin_area_2: 'San Jose',
+            admin_area_1: 'CA',
+            postal_code: '95131',
+            country_code: 'US',
+          },
         },
       },
       application_context: {
@@ -322,7 +320,7 @@ export class PaypalService {
       },
     };
 
-    const accessToken = this.getToken();
+    const accessToken = await this.getToken();
     const requestConfig = {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -339,7 +337,6 @@ export class PaypalService {
       const approveLink = response.data.links.find(
         (link) => link.rel === 'approve',
       )?.href;
-      this.logger.log(response.data);
 
       const subscription = response.data;
 
@@ -347,13 +344,13 @@ export class PaypalService {
         id: subscription.id,
         plan_id: subscription.plan_id,
         status: subscription.status,
-        status_update_time: new Date(subscription.status_update_time),
-        start_time: new Date(subscription.start_time),
+        status_update_time: subscription.status_update_time,
+        start_time: subscription.start_time,
         user_Id: userId,
         subscriber_given_name: subscription.subscriber.name.given_name,
         subscriber_surname: subscription.subscriber.name.surname,
         subscriber_email_address: subscription.subscriber.email_address,
-        create_time: new Date(subscription.create_time),
+        create_time: subscription.create_time,
         subscriptio_links: subscription.links,
       });
 
@@ -368,6 +365,7 @@ export class PaypalService {
       );
       return approveLink;
     } catch (error) {
+      console.log(error);
       console.error('PayPal API Error:', error.respomse?.data || error.message);
       throw new Error(
         `Failed to create PayPal subscription: ${error.response?.data?.message || error.message}`,

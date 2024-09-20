@@ -7,10 +7,10 @@ import { PaypalService } from './paypal.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BillingPlan } from './entities/billing.entity';
 import { Product } from './entities/product.entity';
-import { Subscription } from 'rxjs';
 import { OAuth2Token } from './entities/token.entity';
 import { AuthModule } from '../auth/auth.module';
 import { User } from '../users/entities/users.entity';
+import { Subscription } from './entities/subscription.entity';
 
 @Module({
   imports: [
