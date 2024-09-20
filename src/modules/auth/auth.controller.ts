@@ -217,6 +217,28 @@ export class AuthController {
     });
   }
 
+  @Post('signout')
+  @ApiOperation({
+    summary: 'This endpoint is used to sign out a user.',
+  })
+  @ApiResponse({ status: 200 })
+  async signout(
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const refreshToken = req?.cookies?.['rft'];
+
+    res.clearCookie('act');
+    res.clearCookie('rft');
+
+    await this.authService.validateRefreshToken(refreshToken, true);
+
+    res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'You have successfully logged out',
+    });
+  }
+
   @Post('refresh-token')
   @ApiOperation({
     summary:

@@ -199,12 +199,12 @@ export class AuthService {
     return refreshToken;
   }
 
-  async validateRefreshToken(refreshToken: string) {
+  async validateRefreshToken(refreshToken: string, signout: boolean = false) {
     // Verify the refresh tokens validity
     let payload: any;
     try {
       payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_SECRET,
+        secret: this.config.get<string>('JWT_SECRET'),
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
@@ -234,6 +234,11 @@ export class AuthService {
           Buffer.from(incomingHash, 'hex'),
         )
       ) {
+        // If signout is true, remove the refresh token from the database
+        if (signout) {
+          await this.refreshTokenRepo.delete({ token: storedToken });
+        }
+
         return {
           id: user.id,
           userType: user.userType,
