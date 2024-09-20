@@ -91,7 +91,7 @@ export class AuthController {
       maxAge: 15 * 60 * 1000,
     };
 
-    res.cookie('tact', verificationToken, cookieOptionsTact);
+    res.cookie('act', verificationToken, cookieOptionsTact);
 
     // 5) Generate and send a verification code
     try {
