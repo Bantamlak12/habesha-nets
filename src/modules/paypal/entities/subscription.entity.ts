@@ -9,6 +9,9 @@ export class Subscription {
   plan_id: string;
 
   @Column()
+  user_Id: string;
+
+  @Column()
   status: string;
 
   @Column({ type: 'timestamptz' })
@@ -25,9 +28,6 @@ export class Subscription {
 
   @Column()
   subscriber_email_address: string;
-
-  // @Column()
-  // payer_id: string;
 
   @Column({ type: 'timestamptz' })
   create_time: Date;

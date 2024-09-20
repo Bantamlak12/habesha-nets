@@ -10,7 +10,6 @@ import {
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { PaypalService } from './paypal.service';
-import { AuthGuard } from '@nestjs/passport';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('paypal')

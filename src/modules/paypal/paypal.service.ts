@@ -1,4 +1,9 @@
-import { HttpException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { AxiosResponse } from 'axios';
@@ -9,6 +14,8 @@ import { Repository } from 'typeorm';
 import { AuthService } from '../auth/auth.service';
 import { Product } from './entities/product.entity';
 import { BillingPlan } from './entities/billing.entity';
+import { User } from '../users/entities/users.entity';
+import { Subscription } from './entities/subscription.entity';
 
 @Injectable()
 export class PaypalService {
@@ -19,12 +26,16 @@ export class PaypalService {
     private readonly httpService: HttpService,
     private readonly config: ConfigService,
     private readonly authService: AuthService,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(OAuth2Token)
     private readonly tokenRepo: Repository<OAuth2Token>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
     @InjectRepository(BillingPlan)
     private readonly billingRepo: Repository<BillingPlan>,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepo: Repository<Subscription>,
   ) {
     this.PAYPAL_API = this.config.get<string>('PAYPAL_API');
   }
@@ -254,113 +265,113 @@ export class PaypalService {
   }
 
   async createSubscription(parameterId: number, userId: string) {
-    // let subscriptionId: string | null = null;
-    let subscriptionPlan: string | null = null;
+    let subscriptionPlan: string | null;
 
-    const subscriptionId = await this.billingRepo.find();
-    //   if (parameterId === 1) {
-    //     subscriptionId = process.env.Month_1_Subscription_ID;
-    //     subscriptionPlan = 'monthly';
-    //   } else if (parameterId === 2) {
-    //     subscriptionId = process.env.Month_6_Subscription_ID;
-    //     subscriptionPlan = 'sixMonth';
-    //   } else if (parameterId === 3) {
-    //     subscriptionId = process.env.YEAR_1_Subscription_ID;
-    //     subscriptionPlan = 'Yearly';
-    //   } else {
-    //     throw new BadRequestException('incorrect URL Request');
-    //   }
+    let subscriptionId: string | null;
+    const subscriptionIds = (await this.billingRepo.find()).map(
+      (billing) => billing.id,
+    );
 
-    //   // Fetch the user data from the database
-    //   const user = await this.employerRepository.findOne({
-    //     where: { id: userId },
-    //   });
-    //   if (!user) {
-    //     throw new BadRequestException('User not found');
-    //   }
+    if (parameterId === 1) {
+      subscriptionId = subscriptionIds[0];
+      subscriptionPlan = 'monthly';
+    } else if (parameterId === 2) {
+      subscriptionId = subscriptionIds[1];
+      subscriptionPlan = 'six-month';
+    } else if (parameterId === 3) {
+      subscriptionId = subscriptionIds[2];
+      subscriptionPlan = 'yearly';
+    } else if (parameterId == 4) {
+      subscriptionId = subscriptionIds[3];
+      subscriptionPlan = 'per-post';
+    } else {
+      throw new BadRequestException('incorrect URL Request');
+    }
 
-    //   const requestBody = {
-    //     plan_id: subscriptionId,
-    //     quantity: '1',
-    //     subscriber: {
-    //       name: { given_name: user.firstName, surname: user.lastName },
-    //       email_address: user.email,
-    //       shipping_address: {
-    //         name: { full_name: `${user.firstName} ${user.lastName}` },
-    //         address: {
-    //           address_line_1: '2211 N First Street',
-    //           address_line_2: 'Building 17',
-    //           admin_area_2: 'San Jose',
-    //           admin_area_1: 'CA',
-    //           postal_code: '95131',
-    //           country_code: 'US',
-    //         },
-    //       },
-    //     },
-    //     application_context: {
-    //       brand_name: 'HabeshaNet',
-    //       locale: 'en-US',
-    //       shipping_preference: 'SET_PROVIDED_ADDRESS',
-    //       user_action: 'SUBSCRIBE_NOW',
-    //       payment_method: {
-    //         payer_selected: 'PAYPAL',
-    //         payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
-    //       },
-    //       return_url: 'https://www.godigitalethio.com/news/returnUrl',
-    //       cancel_url: 'https://www.google.com/cancelUrl',
-    //     },
-    //   };
+    const user = await this.userRepo.findOne({ where: { id: userId } });
 
-    //   const headers = {
-    //     Authorization: this.accessToken,
-    //     'Content-Type': 'application/json',
-    //     Accept: 'application/json',
-    //     'PayPal-Request-Id': `SUBSCRIPTION-${Date.now()}`,
-    //     Prefer: 'return=representation',
-    //   };
+    const requestBody = {
+      plan_id: subscriptionId,
+      quantity: '1',
+      subscriber: {
+        name: { given_name: user.firstName, surname: user.lastName },
+        email_address: user.email,
+        shipping_address: {
+          name: { full_name: `${user.firstName} ${user.lastName}` },
+          // address: {
+          //   address_line_1: '2211 N First Street',
+          //   address_line_2: 'Building 17',
+          //   admin_area_2: 'San Jose',
+          //   admin_area_1: 'CA',
+          //   postal_code: '95131',
+          //   country_code: 'US',
+          // },
+        },
+      },
+      application_context: {
+        brand_name: 'HabeshaNet',
+        locale: 'en-US',
+        shipping_preference: 'SET_PROVIDED_ADDRESS',
+        user_action: 'SUBSCRIBE_NOW',
+        payment_method: {
+          payer_selected: 'PAYPAL',
+          payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
+        },
+        return_url: 'https://www.godigitalethio.com/news/returnUrl',
+        cancel_url: 'https://www.google.com/cancelUrl',
+      },
+    };
 
-    //   try {
-    //     const response = await firstValueFrom(
-    //       this.httpService.post(this.paypalApiUrl, requestBody, { headers }),
-    //     );
-    //     const approveLink = response.data.links.find(
-    //       (link) => link.rel === 'approve',
-    //     )?.href;
-    //     console.log(approveLink);
-    //     this.logger.log(response.data);
+    const accessToken = this.getToken();
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+    };
 
-    //     const subscriptionData = new Subscription();
-    //     const subscription = response.data;
+    const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions`;
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(paypalUrl, requestBody, requestConfig),
+      );
+      const approveLink = response.data.links.find(
+        (link) => link.rel === 'approve',
+      )?.href;
+      this.logger.log(response.data);
 
-    //     subscriptionData.id = subscription.id;
-    //     subscriptionData.status = subscription.status;
-    //     subscriptionData.status_update_time = new Date(
-    //       subscription.status_update_time,
-    //     );
-    //     subscriptionData.plan_id = subscription.plan_id;
-    //     subscriptionData.user_Id = userId;
-    //     subscriptionData.start_time = new Date(subscription.start_time);
-    //     subscriptionData.subscriber_given_name =
-    //       subscription.subscriber.name.given_name;
-    //     subscriptionData.subscriber_surname =
-    //       subscription.subscriber.name.surname;
-    //     subscriptionData.subscriber_email_address =
-    //       subscription.subscriber.email_address;
-    //     subscriptionData.create_time = new Date(subscription.create_time);
-    //     //  subscriptionData.payer_id = subscription.subscriber.payer_id;
-    //     subscriptionData.subscriptio_links = subscription.links;
-    //     await this.subscriptionRepository.save(subscriptionData);
-    //     await this.employerRepository.update(
-    //       { id: userId },
-    //       { subscriptionPlan, SubscriptionUpdated: new Date() },
-    //     );
-    //     // return response.data;
-    //     return approveLink;
-    //   } catch (error) {
-    //     console.error('PayPal API Error:', error.respomse?.data || error.message);
-    //     throw new Error(
-    //       `Failed to create PayPal subscription: ${error.response?.data?.message || error.message}`,
-    //     );
-    //   }
+      const subscription = response.data;
+
+      const subscriptionData = this.subscriptionRepo.create({
+        id: subscription.id,
+        plan_id: subscription.plan_id,
+        status: subscription.status,
+        status_update_time: new Date(subscription.status_update_time),
+        start_time: new Date(subscription.start_time),
+        user_Id: userId,
+        subscriber_given_name: subscription.subscriber.name.given_name,
+        subscriber_surname: subscription.subscriber.name.surname,
+        subscriber_email_address: subscription.subscriber.email_address,
+        create_time: new Date(subscription.create_time),
+        subscriptio_links: subscription.links,
+      });
+
+      await this.subscriptionRepo.save(subscriptionData);
+      await this.userRepo.update(
+        { id: userId },
+        {
+          subscriptionPlan,
+          subscriptionStatus: 'subscribed',
+          subscriptionUpdated: new Date(),
+        },
+      );
+      return approveLink;
+    } catch (error) {
+      console.error('PayPal API Error:', error.respomse?.data || error.message);
+      throw new Error(
+        `Failed to create PayPal subscription: ${error.response?.data?.message || error.message}`,
+      );
+    }
   }
 }

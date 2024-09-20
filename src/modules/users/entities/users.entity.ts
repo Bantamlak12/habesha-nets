@@ -137,7 +137,10 @@ export abstract class User {
   subscriptionStatus: 'subscribed' | 'unsubscribed';
 
   @Column({ default: 'no-plan' })
-  subscriptionPlan: 'per-post | monthly' | 'six-month' | 'Yearly';
+  subscriptionPlan: string;
+
+  @Column({ nullable: true })
+  subscriptionUpdated: Date;
 
   @CreateDateColumn()
   createdAt: Date;
