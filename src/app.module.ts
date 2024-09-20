@@ -12,8 +12,8 @@ import { User } from './modules/users/entities/users.entity';
 import { PaypalModule } from './modules/paypal/paypal.module';
 import { BillingPlan } from './modules/paypal/entities/billing.entity';
 import { Product } from './modules/paypal/entities/product.entity';
-import { Subscription } from 'rxjs';
 import { OAuth2Token } from './modules/paypal/entities/token.entity';
+import { Subscription } from './modules/paypal/entities/subscription.entity';
 
 @Module({
   imports: [
