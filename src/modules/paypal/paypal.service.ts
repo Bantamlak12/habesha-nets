@@ -288,14 +288,16 @@ export class PaypalService {
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
 
+    
+
     const requestBody = {
       plan_id: subscriptionId,
       quantity: '1',
       subscriber: {
-        name: { given_name: user.firstName, surname: user.lastName },
+        name: { given_name: 'kaleab', surname: 'Shewanhe' },
         email_address: user.email,
         shipping_address: {
-          name: { full_name: `${user.firstName} ${user.lastName}` },
+          name: { full_name: 'kaleab Shewanhe'  },
           address: {
             address_line_1: '2211 N First Street',
             address_line_2: 'Building 17',
@@ -330,6 +332,8 @@ export class PaypalService {
     };
 
     const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions`;
+  
+  
     try {
       const response = await firstValueFrom(
         this.httpService.post(paypalUrl, requestBody, requestConfig),
@@ -339,13 +343,14 @@ export class PaypalService {
       )?.href;
 
       const subscription = response.data;
+      
 
       const subscriptionData = this.subscriptionRepo.create({
         id: subscription.id,
         plan_id: subscription.plan_id,
         status: subscription.status,
         status_update_time: subscription.status_update_time,
-        start_time: subscription.start_time,
+        start_time:  subscription.start_time,
         user_Id: userId,
         subscriber_given_name: subscription.subscriber.name.given_name,
         subscriber_surname: subscription.subscriber.name.surname,
@@ -355,6 +360,7 @@ export class PaypalService {
       });
 
       await this.subscriptionRepo.save(subscriptionData);
+
       await this.userRepo.update(
         { id: userId },
         {
@@ -374,6 +380,6 @@ export class PaypalService {
   }
 
   async updateSubscriptionStatus(subscriptionId: string, status: string, status_update_time: Date): Promise<void> {
-    await this.subscriptionRepository.update({ id: subscriptionId }, { status,  status_update_time });
+    await this.subscriptionRepo.update({ id: subscriptionId }, { status,  status_update_time });
   }
 }

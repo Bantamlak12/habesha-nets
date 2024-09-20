@@ -3,12 +3,20 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 import Mail from 'nodemailer/lib/mailer';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
+import { accountVerificationEmail } from 'src/shared/mailer/templates/subscription.template';
 
 @Injectable()
 export class CustomMailerService {
   private transporter: Transporter;
 
-  constructor(private config: ConfigService) {
+  constructor(
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepo: Repository<Subscription>,
+    private config: ConfigService,
+  ) {
     this.transporter = nodemailer.createTransport({
       host: this.config.get<string>('MAIL_HOST'),
       port: this.config.get<number>('MAIL_PORT'),
@@ -18,6 +26,7 @@ export class CustomMailerService {
         pass: this.config.get<string>('MAIL_PASSWORD'),
       },
     });
+
   }
 
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
@@ -33,5 +42,33 @@ export class CustomMailerService {
     } catch (error) {
       throw new Error(`Email could not be sent, ${error}`);
     }
+  }
+
+  async sendEmailNotification(subscriptionId: string, status: string) {
+    console.log('email get in to the function')
+    console.log(subscriptionId);
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { id: subscriptionId }});
+    if (!subscription) {
+      throw new Error('Subscription not found');
+    }
+
+  
+
+    const emailBody = accountVerificationEmail(
+      'Habesha Nets',
+      new Date().getFullYear(),
+      `${subscriptionId}`,
+      `${status}`,
+    );
+
+    const subject = 'Subscription Payment';
+  
+    const emailContent = `Your subscription with ID ${subscriptionId} has been ${status}.`;
+    await this.sendEmail(
+      subscription.subscriber_email_address,
+      subject,
+      emailBody
+    );
   }
 }
