@@ -1,10 +1,10 @@
 export function subscriptioncancelEmail(
-    companyName: string,
-    year: number,
-    userName: string,
-    verificationCode: string,
-  ) {
-    return `
+  companyName: string,
+  year: number,
+  userName: string,
+  verificationCode: string,
+) {
+  return `
     <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -86,5 +86,4 @@ export function subscriptioncancelEmail(
   </body>
   </html>
   `;
-  }
-  
+}
