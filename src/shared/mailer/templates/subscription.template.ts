@@ -1,8 +1,8 @@
-export function accountVerificationEmail(
+export function subscriptionconformationEmail(
   companyName: string,
   year: number,
-  expiryTime: string,
-  verificationCode: string,
+  userName: string,
+  status: string,
 ) {
   return `
   <!DOCTYPE html>
@@ -69,14 +69,14 @@ export function accountVerificationEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>Activate Your Account</h1>
+            <h1>Subscription Payment Confirmation</h1>
         </div>
         <div class="content">
-            <p>Hello,</p>
-            <p>Thank you for registering! To complete the activation of your account, please use the verification code below:</p>
-            <div class="verification-code">${verificationCode}</div>
-            <p>Enter this code on the website to verify your account. The activation code will expire after ${expiryTime} minutes.</p>
-            <p>If you didn’t request this, please ignore this email.</p>
+            <p>Hello,${userName}</p>
+            <p>We are writing to confirm that your subscription payment has been successfully processed. Your subscription plan will be active ${year}, and you will have access to all the benefits included in your plan during this period.</p>
+            <div class="verification-code">${status}</div>
+            <p>If you wish to cancel your subscription, please be aware that it will remain active until the end of the current billing cycle. After this period, your subscription will not be renewed, and you will lose access to the subscription benefits.</p>
+            <p>Should you have any questions or require assistance, please do not hesitate to reach out to our support team at [Support Email] or [Support Phone Number].</p>
             <p>Best Regards,<br>The ${companyName} Team</p>
         </div>
         <div class="footer">

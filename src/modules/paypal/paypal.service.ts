@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   HttpException,
+  HttpStatus,
   Injectable,
   Logger,
 } from '@nestjs/common';
@@ -289,29 +290,18 @@ export class PaypalService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
 
     
-
+    console.log(subscriptionId)
     const requestBody = {
       plan_id: subscriptionId,
       quantity: '1',
       subscriber: {
-        name: { given_name: 'kaleab', surname: 'Shewanhe' },
+        name: { given_name: user.firstName, surname: user.lastName },
         email_address: user.email,
-        shipping_address: {
-          name: { full_name: 'kaleab Shewanhe'  },
-          address: {
-            address_line_1: '2211 N First Street',
-            address_line_2: 'Building 17',
-            admin_area_2: 'San Jose',
-            admin_area_1: 'CA',
-            postal_code: '95131',
-            country_code: 'US',
-          },
-        },
       },
       application_context: {
         brand_name: 'HabeshaNet',
         locale: 'en-US',
-        shipping_preference: 'SET_PROVIDED_ADDRESS',
+        shipping_preference: 'NO_SHIPPING',
         user_action: 'SUBSCRIBE_NOW',
         payment_method: {
           payer_selected: 'PAYPAL',
@@ -321,6 +311,7 @@ export class PaypalService {
         cancel_url: 'https://www.google.com/cancelUrl',
       },
     };
+    console.log(requestBody)
 
     const accessToken = await this.getToken();
     const requestConfig = {
@@ -365,6 +356,7 @@ export class PaypalService {
         { id: userId },
         {
           subscriptionPlan,
+          subscriptionId: subscription.id,
           subscriptionStatus: 'subscribed',
           subscriptionUpdated: new Date(),
         },
@@ -382,4 +374,45 @@ export class PaypalService {
   async updateSubscriptionStatus(subscriptionId: string, status: string, status_update_time: Date): Promise<void> {
     await this.subscriptionRepo.update({ id: subscriptionId }, { status,  status_update_time });
   }
+
+  async cancelSubscription(subscriptionId: string, reason: string): Promise<void> {
+
+    const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions/${subscriptionId}/cancel`;
+
+    const accessToken = await this.getToken();
+
+const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+    };
+
+    const body = {
+      reason,
+    };
+
+
+
+    try {
+      const response = await lastValueFrom(
+        this.httpService.post(paypalUrl, body, requestConfig)
+      );
+
+      if (response.status !== HttpStatus.NO_CONTENT) {
+        throw new HttpException(
+          'Failed to cancel PayPal subscription',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    } catch (error) {
+      console.error('Failed to cancel subscription:', error.response?.data || error.message);
+      throw new HttpException(
+        'Failed to cancel PayPal subscription: ' + (error.response?.data?.message || error.message),
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
 }

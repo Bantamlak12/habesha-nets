@@ -136,6 +136,9 @@ export abstract class User {
   @Column({ default: 'unsubscribed' })
   subscriptionStatus: 'subscribed' | 'unsubscribed';
 
+  @Column({ nullable: true })
+  subscriptionId: string;
+
   @Column({ default: 'no-plan' })
   subscriptionPlan: string;
 
