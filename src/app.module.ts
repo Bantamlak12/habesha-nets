@@ -30,14 +30,7 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
         username: config.get<string>('DATABASE_USERNAME'),
         password: config.get<string>('DATABASE_PASSWORD'),
         database: config.get<string>('DATABASE_NAME'),
-        entities: [
-          User,
-          RefreshToken,
-          BillingPlan,
-          Product,
-          Subscription,
-          OAuth2Token,
-        ],
+        entities: [User, RefreshToken],
         synchronize: true,
         ssl: false
           // process.env.NODE_ENV === 'development'
@@ -47,7 +40,6 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
     }),
     AuthModule,
     UsersModule,
-    PaypalModule,
     SmsModule,
     UploadModule,
   ],
