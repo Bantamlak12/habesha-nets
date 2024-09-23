@@ -5,7 +5,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { LocationDto } from './location.dto';
+import { AddressDto } from './address.dto';
 import { BudgetRangeDto } from './bugget-range.dto';
 
 export class PropertyRenterDto {
@@ -27,15 +27,15 @@ export class PropertyRenterDto {
   bio: string;
 
   @ValidateNested()
-  @Type(() => LocationDto)
+  @Type(() => AddressDto)
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       const parsedValue = JSON.parse(value);
-      return plainToClass(LocationDto, parsedValue);
+      return plainToClass(AddressDto, parsedValue);
     }
     return value;
   })
-  location: LocationDto;
+  address: AddressDto;
 
   @IsOptional()
   @IsString()
