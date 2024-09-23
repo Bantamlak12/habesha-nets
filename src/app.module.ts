@@ -30,12 +30,19 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
         username: config.get<string>('DATABASE_USERNAME'),
         password: config.get<string>('DATABASE_PASSWORD'),
         database: config.get<string>('DATABASE_NAME'),
-        entities: [User, RefreshToken],
+        entities: [
+          User,
+          RefreshToken,
+          BillingPlan,
+          Product,
+          OAuth2Token,
+          Subscription,
+        ],
         synchronize: true,
-        ssl: false
-          // process.env.NODE_ENV === 'development'
-          //   ? { rejectUnauthorized: false }
-          //   : { rejectUnauthorized: true },
+        ssl:
+          process.env.NODE_ENV === 'development'
+            ? { rejectUnauthorized: false }
+            : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
