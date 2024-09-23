@@ -5,7 +5,6 @@ import {
   FileTypeValidator,
   HttpStatus,
   MaxFileSizeValidator,
-  NotFoundException,
   ParseFilePipe,
   Post,
   Response,
