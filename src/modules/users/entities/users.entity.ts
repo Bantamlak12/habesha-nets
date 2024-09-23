@@ -64,10 +64,13 @@ export abstract class User {
   profilePicture: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  location: {
+  address: {
+    streetAddress: string;
+    secondaryAddress: string;
     city: string;
     state: string;
     country: string;
+    zipcode: string;
   };
 
   @Column({ type: 'enum', enum: ['Phone', 'Email', 'SMS'], default: 'Email' })
