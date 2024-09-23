@@ -378,6 +378,45 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async updatePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    // Check if the user exist in the database
+    const user = await this.userRepo.findOneBy({ id: userId });
+
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+      throw new BadRequestException('Current password is not correct');
+    }
+
+    // The new password should not be the same as the older password
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'Your new password cannot be the same as your current password',
+      );
+    }
+
+    const hashedPassword = await this.hashPassword(
+      newPassword,
+      confirmPassword,
+    );
+
+    const rowAffected = (
+      await this.userRepo.update(userId, {
+        password: hashedPassword,
+      })
+    ).affected;
+
+    return rowAffected;
+  }
+
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡
   async completeEmployerProfile(
     userId: string,

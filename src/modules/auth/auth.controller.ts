@@ -51,6 +51,7 @@ import { PropertyRenterDto } from './dto/property-renter.dto';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
 import { CareGiverFinder } from 'src/shared/schemas/care-giver-finder.schema';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -285,6 +286,41 @@ export class AuthController {
       status: 'success',
       statusCode: 200,
       message: 'Token refreshed successfully',
+    });
+  }
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'This endpoint is used to change a password.' })
+  @ApiResponse({ status: 200 })
+  async updatePassword(
+    @Body() body: UpdatePasswordDto,
+    @Request() req: any,
+    @Response() res: any,
+  ) {
+    const userId = req.user['sub'];
+
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const currentPassword = body.newPassword;
+    const confirmPassword = body.confirmPassword;
+    if (currentPassword !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const rowAffected = await this.authService.updatePassword(
+      userId,
+      body.currentPassword,
+      body.newPassword,
+      body.confirmPassword,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'Password changed successfully',
+      rowAffected,
     });
   }
 
