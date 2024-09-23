@@ -438,7 +438,10 @@ export class AuthService {
 
     if (user.email === emailOrPhoneNumber) {
       const token = crypto.randomBytes(32).toString('hex');
-      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
       const expiryTime = new Date();
       expiryTime.setHours(expiryTime.getHours() + 1);
 
@@ -470,7 +473,13 @@ export class AuthService {
           'Failed to send email. Please try again later',
         );
       }
-    } else {
+    } else if (user.phoneNumber === emailOrPhoneNumber) {
+      const OTP = this.generateRandomSixDigit();
+
+      const resetToken = this.passwordResetTokenRepo.create({ OTP, user });
+      await this.passwordResetTokenRepo.save(resetToken);
+
+      await this.smsService.sendSms(user.phoneNumber, OTP);
     }
   }
 

@@ -12,6 +12,9 @@ export class ResetTokens {
   @Column({ type: 'timestamp', nullable: true })
   resetTokenExpiry: Date;
 
+  @Column({ nullable: true })
+  OTP: string;
+
   @ManyToOne(() => User, (user) => user.resetTokens, {
     onDelete: 'CASCADE',
   })
