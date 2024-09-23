@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -16,10 +17,12 @@ import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { RefreshToken } from './entities/refresh-token.entity';
-import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { User } from '../users/entities/users.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { ResetTokens } from './entities/password-reset-token.entity';
+import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { ConfigService } from '@nestjs/config';
+import { generatePasswordResetEmail } from 'src/shared/mailer/templates/password-reset.template';
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -34,7 +37,9 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
-    private config: ConfigService,
+    @InjectRepository(ResetTokens)
+    private readonly passwordResetTokenRepo: Repository<ResetTokens>,
+    private readonly config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
@@ -415,6 +420,58 @@ export class AuthService {
     ).affected;
 
     return rowAffected;
+  }
+
+  async forgotPassword(req: any, emailOrPhoneNumber: string) {
+    const user = await this.userRepo.findOne({
+      where: [
+        { email: emailOrPhoneNumber },
+        { phoneNumber: emailOrPhoneNumber },
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        'The provided contact information does not exist.',
+      );
+    }
+
+    if (user.email === emailOrPhoneNumber) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+      const expiryTime = new Date();
+      expiryTime.setHours(expiryTime.getHours() + 1);
+
+      const resetToken = this.passwordResetTokenRepo.create({
+        resetToken: hashedToken,
+        resetTokenExpiry: expiryTime,
+        user,
+      });
+      await this.passwordResetTokenRepo.save(resetToken);
+
+      if (!resetToken) {
+        throw new InternalServerErrorException(
+          'Failed to save password reset token.',
+        );
+      }
+
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+
+      const emailBody = generatePasswordResetEmail(
+        resetUrl,
+        new Date().getFullYear(),
+      );
+      const subject = 'Password Reset';
+
+      try {
+        await this.mailerService.sendEmail(user.email, subject, emailBody);
+      } catch {
+        throw new ServiceUnavailableException(
+          'Failed to send email. Please try again later',
+        );
+      }
+    } else {
+    }
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡

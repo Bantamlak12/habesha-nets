@@ -52,6 +52,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
 import { CareGiverFinder } from 'src/shared/schemas/care-giver-finder.schema';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -295,8 +296,8 @@ export class AuthController {
   @ApiResponse({ status: 200 })
   async updatePassword(
     @Body() body: UpdatePasswordDto,
-    @Request() req: any,
-    @Response() res: any,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
   ) {
     const userId = req.user['sub'];
 
@@ -321,6 +322,25 @@ export class AuthController {
       status: 'success',
       message: 'Password changed successfully',
       rowAffected,
+    });
+  }
+
+  @Post('forgot-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'This end point is used to request a password reset link.',
+  })
+  @ApiResponse({ status: 200 })
+  async forgotPassword(
+    @Body() body: ForgotPasswordDto,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    await this.authService.forgotPassword(req, body.emailOrPhoneNumber);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'Password reset link has been sent to your email.',
     });
   }
 
