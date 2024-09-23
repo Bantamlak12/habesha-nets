@@ -50,6 +50,7 @@ import { LoginDto } from './dto/signin-user.dto';
 import { PropertyRenterDto } from './dto/property-renter.dto';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
+import { CareGiverFinder } from 'src/shared/schemas/care-giver-finder.schema';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -200,19 +201,30 @@ export class AuthController {
 
     const isProfileCompleted = user['isProfileCompleted'];
     let message: string;
+    let username: string;
+    let email: string;
+    let phoneNumber: string;
 
     if (isProfileCompleted) {
       message = 'You are successfully signed in.';
+      username = `${user['firstName']} ${user['lastName']}`;
     } else {
+      email = user['email'];
+      phoneNumber = user['phoneNumber'];
       message = 'You must complete your profile.';
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
-      isProfileCompleted: user['isProfileCompleted'],
-      userType: user['userType'],
-      message,
+      data: {
+        userType: user['userType'],
+        username,
+        email,
+        phoneNumber,
+        isProfileCompleted: user['isProfileCompleted'],
+        message,
+      },
     });
   }
 
@@ -589,6 +601,66 @@ export class AuthController {
     }
 
     const user = await this.authService.completeBabySitterFinderProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  // COMPLETE CARE GIVER PROFILE
+  @Patch('care-giver-finder/profile/complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: "This endpoint is used to complete care giver finder's profile.",
+  })
+  @ApiBody({ schema: CareGiverFinder })
+  @ApiResponse({ status: 201 })
+  async completeCareGiverFinderProfile(
+    @Body() body: BabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'careGiverFinder') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.authService.completeCareGiverFinderProfile(
       id,
       body,
       profilePicture,
