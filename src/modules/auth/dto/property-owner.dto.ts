@@ -1,6 +1,6 @@
 import { plainToClass, Transform, Type } from 'class-transformer';
 import { IsOptional, IsString, ValidateNested } from 'class-validator';
-import { LocationDto } from './location.dto';
+import { AddressDto } from './address.dto';
 
 export class PropertyOwnerDto {
   @IsString()
@@ -21,15 +21,15 @@ export class PropertyOwnerDto {
   bio: string;
 
   @ValidateNested()
-  @Type(() => LocationDto)
+  @Type(() => AddressDto)
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       const parsedValue = JSON.parse(value);
-      return plainToClass(LocationDto, parsedValue);
+      return plainToClass(AddressDto, parsedValue);
     }
     return value;
   })
-  location: LocationDto;
+  address: AddressDto;
 
   @IsOptional()
   @IsString()

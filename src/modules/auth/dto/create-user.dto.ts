@@ -1,11 +1,4 @@
-import {
-  IsEmail,
-  IsString,
-  IsOptional,
-  MinLength,
-  IsPhoneNumber,
-  IsIn,
-} from 'class-validator';
+import { IsString, IsOptional, MinLength, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmailOrPhone } from 'src/common/is-phone-or-email.validator';
 
@@ -17,6 +10,7 @@ export class CreateUserDto {
     'propertyOwner',
     'propertyRenter',
     'babySitterFinder',
+    'careGiverFinder',
   ])
   @ApiProperty({ example: 'employer' })
   userType: string;

@@ -16,13 +16,20 @@ export const employerProfileSchema = {
       description: 'Profile picture file',
     },
     preferredContactMethod: { type: 'string', example: 'SMS' },
-    location: {
+    address: {
       type: 'object',
       properties: {
+        streetAddress: { type: 'string', example: '1234 Main St' },
+        secondaryAddress: {
+          type: 'string',
+          example: 'Apt 101, Suite 3B, Unit 2',
+        },
         city: { type: 'string', example: 'Los Angeles' },
         state: { type: 'string', example: 'California' },
         country: { type: 'string', example: 'USA' },
+        zipcode: { type: 'string', example: '60601' },
       },
+      zipcode: { type: 'string', example: '60601' },
     },
     bio: {
       type: 'string',

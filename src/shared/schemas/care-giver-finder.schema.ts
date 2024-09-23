@@ -1,20 +1,19 @@
-export const PropertyRenterProfileSchema = {
+export const CareGiverFinder = {
   type: 'object',
   properties: {
-    firstName: { type: 'string', example: 'John' },
-    lastName: { type: 'string', example: 'Doe' },
-    email: { type: 'string', example: 'john12@gmail.com', nullable: true },
+    firstName: { type: 'string', example: 'Angelina' },
+    lastName: { type: 'string', example: 'Smith' },
+    email: { type: 'string', example: 'angelina@gmail.com', nullable: true },
     phoneNumber: {
       type: 'string',
       example: '+25424545475',
       nullable: true,
     },
-    bio: {
-      type: 'string',
-      example:
-        'I am a landloard in Los Angeles, California, offering a house for rent with a rental price of $144 - $1023, and prefers to be contacted via SMS.',
-    },
     profilePicture: {
+      type: 'string',
+      format: 'binary',
+    },
+    portfolios: {
       type: 'string',
       format: 'binary',
     },
@@ -35,12 +34,10 @@ export const PropertyRenterProfileSchema = {
       zipcode: { type: 'string', example: '60601' },
     },
     zipcode: { type: 'string', example: '60601' },
-    budgetRange: {
-      type: 'object',
-      properties: {
-        min: { type: 'number', example: 234 },
-        max: { type: 'number', example: 1024 },
-      },
+    bio: {
+      type: 'string',
+      example:
+        'Experienced care giver with over 5 years of expertise in providing exceptional care giving.',
     },
   },
 };
