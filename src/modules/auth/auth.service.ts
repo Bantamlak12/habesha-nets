@@ -412,7 +412,7 @@ export class AuthService {
       companyName: body.companyName,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       bio: body.bio,
     });
 
@@ -474,7 +474,7 @@ export class AuthService {
       phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       profession: body.profession,
       skills: body.skills,
       qualifications: body.qualifications,
@@ -530,7 +530,7 @@ export class AuthService {
       bio: body.bio,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       propertyType: body.propertyType,
     });
 
@@ -577,7 +577,7 @@ export class AuthService {
       bio: body.bio,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       budgetRange: body.budgetRange,
     });
 
@@ -624,7 +624,49 @@ export class AuthService {
       bio: body.bio,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
+    });
+
+    await this.userRepo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
+  }
+
+  // ⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗖𝗔𝗥𝗘 𝗚𝗜𝗩𝗘𝗥⁡ ⁡⁢⁢⁢𝗙𝗜𝗡𝗗𝗘𝗥⁡
+  async completeCareGiverFinderProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
+    }
+
+    await this.checkEmailOrPhoneNumber(body);
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
     });
 
     await this.userRepo.update(userId, { isProfileCompleted: true });
