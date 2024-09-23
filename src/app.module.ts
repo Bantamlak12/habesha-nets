@@ -14,6 +14,7 @@ import { BillingPlan } from './modules/paypal/entities/billing.entity';
 import { Product } from './modules/paypal/entities/product.entity';
 import { OAuth2Token } from './modules/paypal/entities/token.entity';
 import { Subscription } from './modules/paypal/entities/subscription.entity';
+import { ResetTokens } from './modules/auth/entities/password-reset-token.entity';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
           Product,
           OAuth2Token,
           Subscription,
+          ResetTokens,
         ],
         synchronize: true,
         ssl:
@@ -47,6 +49,7 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
     }),
     AuthModule,
     UsersModule,
+    PaypalModule,
     SmsModule,
     UploadModule,
   ],
