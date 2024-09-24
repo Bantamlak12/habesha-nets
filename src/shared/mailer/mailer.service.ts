@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
@@ -9,7 +9,6 @@ import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { subscriptionconformationEmail } from 'src/shared/mailer/templates/subscription.template';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { subscriptioncancelEmail } from './templates/subscription.cancel.template';
-
 
 @Injectable()
 export class CustomMailerService {
@@ -29,7 +28,6 @@ export class CustomMailerService {
         pass: this.config.get<string>('MAIL_PASSWORD'),
       },
     });
-
   }
 
   async sendEmail(to: string, subject: string, html: string): Promise<void> {
@@ -43,52 +41,49 @@ export class CustomMailerService {
     try {
       await this.transporter.sendMail(options);
     } catch (error) {
-      throw new Error(`Email could not be sent, ${error}`);
+      throw new InternalServerErrorException(
+        `Email could not be sent, ${error}`,
+      );
     }
   }
 
-  async sendEmailNotification(userName: string, status: string, userEmail: string) {
+  async sendEmailNotification(
+    userName: string,
+    status: string,
+    userEmail: string,
+  ) {
     // const subscription = await this.subscriptionRepo.findOne({
     //   where: { id: subscriptionId }});
     // if (!subscription) {
     //   throw new Error('Subscription not found');
     // }
 
-    console.log('email'+userEmail);
+    console.log('email' + userEmail);
 
-  
-  if (status == 'Activated') {
-    const emailBody = subscriptionconformationEmail(
-      'Habesha Nets',
-      new Date().getFullYear(),
-      `${userName}`,
-      `${status}`,
-    );
+    if (status == 'Activated') {
+      const emailBody = subscriptionconformationEmail(
+        'Habesha Nets',
+        new Date().getFullYear(),
+        `${userName}`,
+        `${status}`,
+      );
 
-    const subject = 'Subscription Payment';
-  
-    // const emailContent = `Your subscription with ID ${userEmail} has been ${status}.`;
-    await this.sendEmail(
-      userEmail,
-      subject,
-      emailBody
-    );
-  } else if (status == 'CANCELED'){
-    const emailBody = subscriptioncancelEmail(
-      'Habesha Nets',
-      new Date().getFullYear(),
-      `${userName}`,
-      `${status}`,
-    );
+      const subject = 'Subscription Payment';
 
-    const subject = 'Subscription Payment Canceled';
-  
-    // const emailContent = `Your subscription with ID ${subscriptionId} has been ${status}.`;
-    await this.sendEmail(
-      userEmail,
-      subject,
-      emailBody
-    );
-  }
+      // const emailContent = `Your subscription with ID ${userEmail} has been ${status}.`;
+      await this.sendEmail(userEmail, subject, emailBody);
+    } else if (status == 'CANCELED') {
+      const emailBody = subscriptioncancelEmail(
+        'Habesha Nets',
+        new Date().getFullYear(),
+        `${userName}`,
+        `${status}`,
+      );
+
+      const subject = 'Subscription Payment Canceled';
+
+      // const emailContent = `Your subscription with ID ${subscriptionId} has been ${status}.`;
+      await this.sendEmail(userEmail, subject, emailBody);
+    }
   }
 }
