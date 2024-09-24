@@ -15,6 +15,7 @@ import {
   UseInterceptors,
   Patch,
   UnauthorizedException,
+  Param,
 } from '@nestjs/common';
 import { CookieOptions, Response as ExpressResponse } from 'express';
 import { Request as ExpressRequest } from 'express';
@@ -23,6 +24,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -53,6 +55,8 @@ import { User } from '../users/entities/users.entity';
 import { CareGiverFinder } from 'src/shared/schemas/care-giver-finder.schema';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/password-reset.dto';
+import { OtpDto } from './dto/password-reset-opt.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -64,6 +68,12 @@ export class AuthController {
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
   ) {}
+
+  isValidUUID(identifier: string): boolean {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(identifier);
+  }
 
   // REGISTER A NEW USER
   @Post('/signup')
@@ -341,6 +351,73 @@ export class AuthController {
     return res.status(HttpStatus.OK).json({
       status: 'success',
       message: 'Password reset link has been sent to your email.',
+    });
+  }
+
+  @Post('check-opt')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @ApiOperation({
+    summary: 'This end point is used to check the validity of the OTP sent',
+  })
+  @ApiResponse({ status: 200 })
+  async checkOtpValidity(
+    @Body() body: OtpDto,
+    @Response() res: ExpressResponse,
+  ) {
+    const resetOtpId = await this.authService.checkOtp(body.otp);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'OTP is valid. Return back the id.',
+      id: resetOtpId,
+    });
+  }
+
+  @Patch('reset-password/:identifier')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @ApiOperation({
+    summary:
+      'This endpoint is used to reset your password if the token sent to your email is still valid.',
+  })
+  @ApiParam({
+    name: 'identifier',
+    description: 'A unique token/OTP sent to your email for password reset.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'A success message indicating that the password has been successfully reset.',
+  })
+  async resetPassword(
+    @Body() body: ResetPasswordDto,
+    @Param('identifier') identifier: string,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+    let token: string;
+    let otpRecordId: string;
+
+    const isUUID = this.isValidUUID(identifier);
+    if (isUUID) {
+      otpRecordId = identifier;
+    } else {
+      token = identifier;
+    }
+
+    await this.authService.resetPassword(
+      userId,
+      token,
+      otpRecordId,
+      body.newPassword,
+      body.confirmPassword,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'You have successfully reset your pasword.',
     });
   }
 

@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -10,7 +9,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { promisify } from 'util';
 import { JwtService } from '@nestjs/jwt';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
@@ -23,6 +22,7 @@ import { ResetTokens } from './entities/password-reset-token.entity';
 import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { ConfigService } from '@nestjs/config';
 import { generatePasswordResetEmail } from 'src/shared/mailer/templates/password-reset.template';
+import { Cron } from '@nestjs/schedule';
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -94,9 +94,55 @@ export class AuthService {
     return decrypted;
   }
 
+  async clearPasswordResetToken(id: string): Promise<void> {
+    await this.passwordResetTokenRepo.delete({ id });
+  }
+
+  // @Cron('*/10 * * * * *') // Runs every 10 seconds
+  @Cron('0 0 * * 0') // Runs every sunday at mid-night
+  async cleanupExpiredResetTokens(): Promise<void> {
+    const now = new Date();
+    await this.refreshTokenRepo.delete({ expiresAt: LessThan(now) });
+    await this.passwordResetTokenRepo.delete({
+      resetTokenExpiry: LessThan(now),
+    });
+    await this.passwordResetTokenRepo.delete({
+      OtpExpiry: LessThan(now),
+    });
+  }
+
+  async resetAndUpdatePassword(
+    userId: string,
+    id: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    const hashedPassword = await this.hashPassword(
+      newPassword,
+      confirmPassword,
+    );
+    await this.userRepo.update(userId, {
+      password: hashedPassword,
+    });
+    await this.clearPasswordResetToken(id);
+    await this.cleanupExpiredResetTokens();
+  }
+
   // Random 6-digit number generator
   generateRandomSixDigit() {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  async checkOtp(OTP: string) {
+    const resetOTP = await this.passwordResetTokenRepo.findOne({
+      where: { OTP },
+    });
+
+    if (!resetOTP || resetOTP.OtpExpiry < new Date()) {
+      throw new BadRequestException('Your OTP has expired.');
+    }
+
+    return resetOTP.id;
   }
 
   async validateUser(emailOrPhone: string, password: string) {
@@ -436,8 +482,13 @@ export class AuthService {
       );
     }
 
+    let resetTokenRecord = await this.passwordResetTokenRepo.findOne({
+      where: { user: { id: user.id } },
+    });
+
     if (user.email === emailOrPhoneNumber) {
       const token = crypto.randomBytes(32).toString('hex');
+
       const hashedToken = crypto
         .createHash('sha256')
         .update(token)
@@ -445,42 +496,98 @@ export class AuthService {
       const expiryTime = new Date();
       expiryTime.setHours(expiryTime.getHours() + 1);
 
-      const resetToken = this.passwordResetTokenRepo.create({
-        resetToken: hashedToken,
-        resetTokenExpiry: expiryTime,
-        user,
-      });
-      await this.passwordResetTokenRepo.save(resetToken);
-
-      if (!resetToken) {
-        throw new InternalServerErrorException(
-          'Failed to save password reset token.',
-        );
+      if (resetTokenRecord) {
+        resetTokenRecord.resetToken = hashedToken;
+        resetTokenRecord.resetTokenExpiry = expiryTime;
+      } else {
+        resetTokenRecord = this.passwordResetTokenRepo.create({
+          resetToken: hashedToken,
+          resetTokenExpiry: expiryTime,
+          user,
+        });
       }
 
       const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-
       const emailBody = generatePasswordResetEmail(
         resetUrl,
         new Date().getFullYear(),
       );
       const subject = 'Password Reset';
 
-      try {
-        await this.mailerService.sendEmail(user.email, subject, emailBody);
-      } catch {
-        throw new ServiceUnavailableException(
-          'Failed to send email. Please try again later',
-        );
-      }
+      await this.mailerService.sendEmail(user.email, subject, emailBody);
+      await this.passwordResetTokenRepo.save(resetTokenRecord);
     } else if (user.phoneNumber === emailOrPhoneNumber) {
       const OTP = this.generateRandomSixDigit();
+      const expiryTime = 5;
+      const OtpExpiry = new Date(Date.now() + expiryTime * 60 * 1000);
 
-      const resetToken = this.passwordResetTokenRepo.create({ OTP, user });
-      await this.passwordResetTokenRepo.save(resetToken);
+      if (resetTokenRecord) {
+        resetTokenRecord.OTP = OTP;
+        resetTokenRecord.OtpExpiry = OtpExpiry;
+      } else {
+        resetTokenRecord = this.passwordResetTokenRepo.create({
+          OTP,
+          OtpExpiry,
+          user,
+        });
+      }
 
       await this.smsService.sendSms(user.phoneNumber, OTP);
+      await this.passwordResetTokenRepo.save(resetTokenRecord);
     }
+  }
+
+  async resetPassword(
+    userId: string,
+    token: string,
+    otpRecordId: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    if (token) {
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
+
+      const resetToken = await this.passwordResetTokenRepo.findOne({
+        where: { resetToken: hashedToken },
+      });
+
+      if (!resetToken) {
+        throw new BadRequestException(
+          'You already may have have reseted your password. Ask a new reset reset link.',
+        );
+      }
+
+      if (resetToken.resetTokenExpiry < new Date()) {
+        throw new BadRequestException('Your reset reset link has expired.');
+      }
+
+      await this.resetAndUpdatePassword(
+        userId,
+        resetToken.id,
+        newPassword,
+        confirmPassword,
+      );
+    }
+
+    const resetOTP = await this.passwordResetTokenRepo.findOne({
+      where: { id: otpRecordId },
+    });
+
+    if (!resetOTP) {
+      throw new BadRequestException(
+        'You already may have have reseted your password. Ask a new reset OTP.',
+      );
+    }
+
+    await this.resetAndUpdatePassword(
+      userId,
+      otpRecordId,
+      newPassword,
+      confirmPassword,
+    );
   }
 
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡
