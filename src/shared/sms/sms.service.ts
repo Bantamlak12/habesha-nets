@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Twilio } from 'twilio';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class SmsService {
       });
       return message;
     } catch (error) {
-      throw new Error(`Failed to send SMS, ${error}`);
+      throw new InternalServerErrorException(`Failed to send SMS, ${error}`);
     }
   }
 }

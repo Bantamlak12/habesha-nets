@@ -12,10 +12,13 @@ import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ResetTokens } from './entities/password-reset-token.entity';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken]),
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forFeature([User, RefreshToken, ResetTokens]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

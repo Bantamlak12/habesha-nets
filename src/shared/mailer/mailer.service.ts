@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
@@ -42,7 +42,9 @@ export class CustomMailerService {
     try {
       await this.transporter.sendMail(options);
     } catch (error) {
-      throw new Error(`Email could not be sent, ${error}`);
+      throw new InternalServerErrorException(
+        `Email could not be sent, ${error}`,
+      );
     }
   }
 

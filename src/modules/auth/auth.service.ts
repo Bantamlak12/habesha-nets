@@ -9,17 +9,20 @@ import {
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { promisify } from 'util';
 import { JwtService } from '@nestjs/jwt';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { RefreshToken } from './entities/refresh-token.entity';
-import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { User } from '../users/entities/users.entity';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { ResetTokens } from './entities/password-reset-token.entity';
+import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { ConfigService } from '@nestjs/config';
+import { generatePasswordResetEmail } from 'src/shared/mailer/templates/password-reset.template';
+import { Cron } from '@nestjs/schedule';
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -34,7 +37,9 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
-    private config: ConfigService,
+    @InjectRepository(ResetTokens)
+    private readonly passwordResetTokenRepo: Repository<ResetTokens>,
+    private readonly config: ConfigService,
     private readonly jwtService: JwtService,
     private readonly mailerService: CustomMailerService,
     private readonly smsService: SmsService,
@@ -89,9 +94,53 @@ export class AuthService {
     return decrypted;
   }
 
+  async clearPasswordResetToken(id: string): Promise<void> {
+    await this.passwordResetTokenRepo.delete({ id });
+  }
+
+  // @Cron('*/10 * * * * *') // Runs every 10 seconds
+  @Cron('0 0 * * 0') // Runs every sunday at mid-night
+  async cleanupExpiredResetTokens(): Promise<void> {
+    const now = new Date();
+    await this.refreshTokenRepo.delete({ expiresAt: LessThan(now) });
+    await this.passwordResetTokenRepo.delete({
+      resetTokenExpiry: LessThan(now),
+      OtpExpiry: LessThan(now),
+    });
+  }
+
+  async resetAndUpdatePassword(
+    userId: string,
+    id: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    const hashedPassword = await this.hashPassword(
+      newPassword,
+      confirmPassword,
+    );
+    await this.userRepo.update(userId, {
+      password: hashedPassword,
+    });
+    await this.clearPasswordResetToken(id);
+    await this.cleanupExpiredResetTokens();
+  }
+
   // Random 6-digit number generator
   generateRandomSixDigit() {
     return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  async checkOtp(OTP: string) {
+    const resetOTP = await this.passwordResetTokenRepo.findOne({
+      where: { OTP },
+    });
+
+    if (!resetOTP || resetOTP.OtpExpiry < new Date()) {
+      throw new BadRequestException('Your OTP has expired.');
+    }
+
+    return resetOTP.id;
   }
 
   async validateUser(emailOrPhone: string, password: string) {
@@ -199,12 +248,12 @@ export class AuthService {
     return refreshToken;
   }
 
-  async validateRefreshToken(refreshToken: string) {
+  async validateRefreshToken(refreshToken: string, signout: boolean = false) {
     // Verify the refresh tokens validity
     let payload: any;
     try {
       payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_SECRET,
+        secret: this.config.get<string>('JWT_SECRET'),
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
@@ -234,6 +283,11 @@ export class AuthService {
           Buffer.from(incomingHash, 'hex'),
         )
       ) {
+        // If signout is true, remove the refresh token from the database
+        if (signout) {
+          await this.refreshTokenRepo.delete({ token: storedToken });
+        }
+
         return {
           id: user.id,
           userType: user.userType,
@@ -373,6 +427,167 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async updatePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    // Check if the user exist in the database
+    const user = await this.userRepo.findOneBy({ id: userId });
+
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+      throw new BadRequestException('Current password is not correct');
+    }
+
+    // The new password should not be the same as the older password
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        'Your new password cannot be the same as your current password',
+      );
+    }
+
+    const hashedPassword = await this.hashPassword(
+      newPassword,
+      confirmPassword,
+    );
+
+    const rowAffected = (
+      await this.userRepo.update(userId, {
+        password: hashedPassword,
+      })
+    ).affected;
+
+    return rowAffected;
+  }
+
+  async forgotPassword(req: any, emailOrPhoneNumber: string) {
+    const user = await this.userRepo.findOne({
+      where: [
+        { email: emailOrPhoneNumber },
+        { phoneNumber: emailOrPhoneNumber },
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        'The provided contact information does not exist.',
+      );
+    }
+
+    let resetTokenRecord = await this.passwordResetTokenRepo.findOne({
+      where: { user: { id: user.id } },
+    });
+
+    if (user.email === emailOrPhoneNumber) {
+      const token = crypto.randomBytes(32).toString('hex');
+
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
+      const expiryTime = new Date();
+      expiryTime.setHours(expiryTime.getHours() + 1);
+
+      if (resetTokenRecord) {
+        resetTokenRecord.resetToken = hashedToken;
+        resetTokenRecord.resetTokenExpiry = expiryTime;
+      } else {
+        resetTokenRecord = this.passwordResetTokenRepo.create({
+          resetToken: hashedToken,
+          resetTokenExpiry: expiryTime,
+          user,
+        });
+      }
+
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+      const emailBody = generatePasswordResetEmail(
+        resetUrl,
+        new Date().getFullYear(),
+      );
+      const subject = 'Password Reset';
+
+      await this.mailerService.sendEmail(user.email, subject, emailBody);
+      await this.passwordResetTokenRepo.save(resetTokenRecord);
+    } else if (user.phoneNumber === emailOrPhoneNumber) {
+      const OTP = this.generateRandomSixDigit();
+      const expiryTime = 5;
+      const OtpExpiry = new Date(Date.now() + expiryTime * 60 * 1000);
+
+      if (resetTokenRecord) {
+        resetTokenRecord.OTP = OTP;
+        resetTokenRecord.OtpExpiry = OtpExpiry;
+      } else {
+        resetTokenRecord = this.passwordResetTokenRepo.create({
+          OTP,
+          OtpExpiry,
+          user,
+        });
+      }
+
+      await this.smsService.sendSms(user.phoneNumber, OTP);
+      await this.passwordResetTokenRepo.save(resetTokenRecord);
+    }
+  }
+
+  async resetPassword(
+    userId: string,
+    token: string,
+    otpRecordId: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) {
+    if (token) {
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(token)
+        .digest('hex');
+
+      const resetToken = await this.passwordResetTokenRepo.findOne({
+        where: { resetToken: hashedToken },
+      });
+
+      if (!resetToken) {
+        throw new BadRequestException(
+          'You already may have have reseted your password. Ask a new reset reset link.',
+        );
+      }
+
+      if (resetToken.resetTokenExpiry < new Date()) {
+        throw new BadRequestException('Your reset reset link has expired.');
+      }
+
+      await this.resetAndUpdatePassword(
+        userId,
+        resetToken.id,
+        newPassword,
+        confirmPassword,
+      );
+    }
+
+    const resetOTP = await this.passwordResetTokenRepo.findOne({
+      where: { id: otpRecordId },
+    });
+
+    if (!resetOTP) {
+      throw new BadRequestException(
+        'You already may have have reseted your password. Ask a new reset OTP.',
+      );
+    }
+
+    await this.resetAndUpdatePassword(
+      userId,
+      otpRecordId,
+      newPassword,
+      confirmPassword,
+    );
+  }
+
   // ⁡⁢⁣⁣⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗘𝗠𝗣𝗟𝗢𝗬𝗘𝗥⁡
   async completeEmployerProfile(
     userId: string,
@@ -407,7 +622,7 @@ export class AuthService {
       companyName: body.companyName,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       bio: body.bio,
     });
 
@@ -469,7 +684,7 @@ export class AuthService {
       phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       profession: body.profession,
       skills: body.skills,
       qualifications: body.qualifications,
@@ -525,7 +740,7 @@ export class AuthService {
       bio: body.bio,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       propertyType: body.propertyType,
     });
 
@@ -572,7 +787,7 @@ export class AuthService {
       bio: body.bio,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
       budgetRange: body.budgetRange,
     });
 
@@ -619,7 +834,49 @@ export class AuthService {
       bio: body.bio,
       profilePicture: profileURL,
       preferredContactMethod: body.preferredContactMethod,
-      location: body.location,
+      address: body.address,
+    });
+
+    await this.userRepo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
+  }
+
+  // ⁡⁢⁢⁢⁡⁢⁢⁢𝗣𝗥𝗢𝗙𝗜𝗟𝗘 𝗖𝗢𝗠𝗣𝗟𝗘𝗧𝗜𝗢𝗡 𝗙𝗢𝗥 ⁡⁢⁢⁢𝗖𝗔𝗥𝗘 𝗚𝗜𝗩𝗘𝗥⁡ ⁡⁢⁢⁢𝗙𝗜𝗡𝗗𝗘𝗥⁡
+  async completeCareGiverFinderProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isProfileCompleted) {
+      throw new BadRequestException('Profile is already completed');
+    }
+
+    await this.checkEmailOrPhoneNumber(body);
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      email: user.email ? user.email : body.email,
+      phoneNumber: user.phoneNumber ? user.phoneNumber : body.phoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
     });
 
     await this.userRepo.update(userId, { isProfileCompleted: true });

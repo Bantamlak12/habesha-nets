@@ -38,6 +38,6 @@ export class RefreshToken {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @Column({ nullable: true })
   expiresAt: Date;
 }

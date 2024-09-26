@@ -1,4 +1,4 @@
-  export function subscriptionCancelEmail(
+export function subscriptionCancelEmail(
     companyName: string,
     year: number,
     userName: string,   
@@ -90,5 +90,4 @@
       </html>
     `;
   }
-  
-  
+

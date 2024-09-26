@@ -1,3 +1,4 @@
+import { ResetTokens } from 'src/modules/auth/entities/password-reset-token.entity';
 import { RefreshToken } from 'src/modules/auth/entities/refresh-token.entity';
 import {
   Column,
@@ -64,10 +65,13 @@ export abstract class User {
   profilePicture: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  location: {
+  address: {
+    streetAddress: string;
+    secondaryAddress: string;
     city: string;
     state: string;
     country: string;
+    zipcode: string;
   };
 
   @Column({ type: 'enum', enum: ['Phone', 'Email', 'SMS'], default: 'Email' })
@@ -153,4 +157,7 @@ export abstract class User {
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
+
+  @OneToMany(() => ResetTokens, (resetTokens) => resetTokens.user)
+  resetTokens: ResetTokens[];
 }

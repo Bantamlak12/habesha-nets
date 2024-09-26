@@ -5,7 +5,6 @@ import {
   FileTypeValidator,
   HttpStatus,
   MaxFileSizeValidator,
-  NotFoundException,
   ParseFilePipe,
   Post,
   Response,
@@ -16,6 +15,7 @@ import {
   UseInterceptors,
   Patch,
   UnauthorizedException,
+  Param,
 } from '@nestjs/common';
 import { CookieOptions, Response as ExpressResponse } from 'express';
 import { Request as ExpressRequest } from 'express';
@@ -24,6 +24,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -51,6 +52,11 @@ import { LoginDto } from './dto/signin-user.dto';
 import { PropertyRenterDto } from './dto/property-renter.dto';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/users.entity';
+import { CareGiverFinder } from 'src/shared/schemas/care-giver-finder.schema';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/password-reset.dto';
+import { OtpDto } from './dto/password-reset-opt.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -62,6 +68,12 @@ export class AuthController {
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepo: Repository<RefreshToken>,
   ) {}
+
+  isValidUUID(identifier: string): boolean {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(identifier);
+  }
 
   // REGISTER A NEW USER
   @Post('/signup')
@@ -91,7 +103,7 @@ export class AuthController {
       maxAge: 15 * 60 * 1000,
     };
 
-    res.cookie('tact', verificationToken, cookieOptionsTact);
+    res.cookie('act', verificationToken, cookieOptionsTact);
 
     // 5) Generate and send a verification code
     try {
@@ -200,27 +212,53 @@ export class AuthController {
     res.cookie('act', tokens.accessToken, cookieOptionsAct);
 
     const isProfileCompleted = user['isProfileCompleted'];
-    let redirectUrl: string;
+    let message: string;
+    let username: string;
+    let email: string;
+    let phoneNumber: string;
 
     if (isProfileCompleted) {
-      redirectUrl = 'You are successfully signed in.';
-    } else if (user['userType'] === 'employer') {
-      redirectUrl = 'PATCH /auth/employers/profile/complete';
-    } else if (user['userType'] === 'serviceProvider') {
-      redirectUrl = 'PATCH /auth/service-providers/profile/complete';
-    } else if (user['userType'] === 'propertyOwner') {
-      redirectUrl = 'PATCH /auth/property-owners/profile/complete';
-    } else if (user['userType'] === 'propertyRenter') {
-      redirectUrl = 'PATCH /auth/property-renters/profile/complete';
-    } else if (user['userType'] === 'babySitterFinder') {
-      redirectUrl = 'PATCH /auth/baby-sitter-finder/profile/complete';
+      message = 'You are successfully signed in.';
+      username = `${user['firstName']} ${user['lastName']}`;
+    } else {
+      email = user['email'];
+      phoneNumber = user['phoneNumber'];
+      message = 'You must complete your profile.';
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
-      isProfileCompleted: user['isProfileCompleted'],
-      message: redirectUrl,
+      data: {
+        userType: user['userType'],
+        username,
+        email,
+        phoneNumber,
+        isProfileCompleted: user['isProfileCompleted'],
+        message,
+      },
+    });
+  }
+
+  @Post('signout')
+  @ApiOperation({
+    summary: 'This endpoint is used to sign out a user.',
+  })
+  @ApiResponse({ status: 200 })
+  async signout(
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const refreshToken = req?.cookies?.['rft'];
+
+    res.clearCookie('act');
+    res.clearCookie('rft');
+
+    await this.authService.validateRefreshToken(refreshToken, true);
+
+    res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'You have successfully logged out',
     });
   }
 
@@ -259,6 +297,127 @@ export class AuthController {
       status: 'success',
       statusCode: 200,
       message: 'Token refreshed successfully',
+    });
+  }
+
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'This endpoint is used to change a password.' })
+  @ApiResponse({ status: 200 })
+  async updatePassword(
+    @Body() body: UpdatePasswordDto,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const currentPassword = body.newPassword;
+    const confirmPassword = body.confirmPassword;
+    if (currentPassword !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    const rowAffected = await this.authService.updatePassword(
+      userId,
+      body.currentPassword,
+      body.newPassword,
+      body.confirmPassword,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'Password changed successfully',
+      rowAffected,
+    });
+  }
+
+  @Post('forgot-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'This end point is used to request a password reset link.',
+  })
+  @ApiResponse({ status: 200 })
+  async forgotPassword(
+    @Body() body: ForgotPasswordDto,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    await this.authService.forgotPassword(req, body.emailOrPhoneNumber);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'Password reset link has been sent to your email.',
+    });
+  }
+
+  @Post('check-opt')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @ApiOperation({
+    summary: 'This end point is used to check the validity of the OTP sent',
+  })
+  @ApiResponse({ status: 200 })
+  async checkOtpValidity(
+    @Body() body: OtpDto,
+    @Response() res: ExpressResponse,
+  ) {
+    const resetOtpId = await this.authService.checkOtp(body.otp);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'OTP is valid. Return back the id.',
+      id: resetOtpId,
+    });
+  }
+
+  @Patch('reset-password/:identifier')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @ApiOperation({
+    summary:
+      'This endpoint is used to reset your password if the token sent to your email is still valid.',
+  })
+  @ApiParam({
+    name: 'identifier',
+    description: 'A unique token/OTP sent to your email for password reset.',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'A success message indicating that the password has been successfully reset.',
+  })
+  async resetPassword(
+    @Body() body: ResetPasswordDto,
+    @Param('identifier') identifier: string,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+    let token: string;
+    let otpRecordId: string;
+
+    const isUUID = this.isValidUUID(identifier);
+    if (isUUID) {
+      otpRecordId = identifier;
+    } else {
+      token = identifier;
+    }
+
+    await this.authService.resetPassword(
+      userId,
+      token,
+      otpRecordId,
+      body.newPassword,
+      body.confirmPassword,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      message: 'You have successfully reset your pasword.',
     });
   }
 
@@ -575,6 +734,66 @@ export class AuthController {
     }
 
     const user = await this.authService.completeBabySitterFinderProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  // COMPLETE CARE GIVER PROFILE
+  @Patch('care-giver-finder/profile/complete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('Authorization')
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: "This endpoint is used to complete care giver finder's profile.",
+  })
+  @ApiBody({ schema: CareGiverFinder })
+  @ApiResponse({ status: 201 })
+  async completeCareGiverFinderProfile(
+    @Body() body: BabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'careGiverFinder') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.authService.completeCareGiverFinderProfile(
       id,
       body,
       profilePicture,
