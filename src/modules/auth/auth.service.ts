@@ -105,8 +105,6 @@ export class AuthService {
     await this.refreshTokenRepo.delete({ expiresAt: LessThan(now) });
     await this.passwordResetTokenRepo.delete({
       resetTokenExpiry: LessThan(now),
-    });
-    await this.passwordResetTokenRepo.delete({
       OtpExpiry: LessThan(now),
     });
   }
