@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +18,7 @@ import { Product } from './entities/product.entity';
 import { BillingPlan } from './entities/billing.entity';
 import { User } from '../users/entities/users.entity';
 import { Subscription } from './entities/subscription.entity';
+import axios from 'axios';
 
 @Injectable()
 export class PaypalService {
@@ -264,6 +266,9 @@ export class PaypalService {
   }
 
   async createSubscription(parameterId: number, userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+
+    // if(user.subscriptionStatus === 'subscribed')
     let subscriptionPlan: string | null;
 
     let subscriptionId: string | null;
@@ -289,7 +294,6 @@ export class PaypalService {
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
 
-    console.log(subscriptionId);
     const requestBody = {
       plan_id: subscriptionId,
       quantity: '1',
@@ -310,7 +314,6 @@ export class PaypalService {
         cancel_url: 'https://www.google.com/cancelUrl',
       },
     };
-    console.log(requestBody);
 
     const accessToken = await this.getToken();
     const requestConfig = {
@@ -362,8 +365,8 @@ export class PaypalService {
     } catch (error) {
       console.log(error);
       console.error('PayPal API Error:', error.respomse?.data || error.message);
-      throw new Error(
-        `Failed to create PayPal subscription: ${error.response?.data?.message || error.message}`,
+      throw new InternalServerErrorException(
+        'Unable to process your request at this time.',
       );
     }
   }
@@ -422,4 +425,88 @@ export class PaypalService {
       );
     }
   }
+
+  async getSubscriptionDetails(subscriptionId) {
+    const token = await this.getAccessToken();
+
+    try {
+      const response = await axios.get(
+        `https://api-m.sandbox.paypal.com/v1/billing/subscriptions${subscriptionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      return response.data; // Return subscription details
+    } catch (error) {
+      console.error(
+        'Error fetching subscription details:',
+        error.response?.data || error.message,
+      );
+      throw new Error('Failed to fetch subscription details');
+    }
+  }
+
+  async updateSubscription(subscriptionId: string) {
+    const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions/${subscriptionId}`;
+    const accessToken = await this.getToken();
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        prefer: 'return=representation',
+      },
+    };
+
+    const body = [
+      {
+        op: 'replace',
+        path: '/plan/billing_cycles/@sequence==1/pricing_scheme/fixed_price',
+        value: { currency_code: 'USD', value: '50.00' },
+      },
+      {
+        op: 'replace',
+        path: '/plan/billing_cycles/@sequence==2/pricing_scheme/tiers',
+        value: [
+          {
+            starting_quantity: '1',
+            ending_quantity: '1000',
+            amount: { value: '500', currency_code: 'USD' },
+          },
+          {
+            starting_quantity: '1001',
+            amount: { value: '2000', currency_code: 'USD' },
+          },
+        ],
+      },
+      {
+        op: 'replace',
+        path: '/plan/payment_preferences/auto_bill_outstanding',
+        value: true,
+      },
+      {
+        op: 'replace',
+        path: '/plan/payment_preferences/payment_failure_threshold',
+        value: 1,
+      },
+      {
+        op: 'replace',
+        path: '/plan/taxes/percentage',
+        value: '10',
+      },
+    ];
+
+    try {
+      const response = await lastValueFrom(
+        this.httpService.patch(paypalUrl, body, requestConfig),
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error updating PayPal subscription:', error);
+      throw error;
+    }
+  }
 }
+
