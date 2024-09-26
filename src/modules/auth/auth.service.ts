@@ -13,7 +13,7 @@ import { Repository } from 'typeorm';
 import { promisify } from 'util';
 import { JwtService } from '@nestjs/jwt';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
-import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
+import { accountVerificationEmail } from 'src/shared/mailer/templates/account_verification.template';
 import { SmsService } from 'src/shared/sms/sms.service';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { RefreshToken } from './entities/refresh-token.entity';
