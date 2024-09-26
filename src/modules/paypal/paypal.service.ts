@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,6 +18,7 @@ import { Product } from './entities/product.entity';
 import { BillingPlan } from './entities/billing.entity';
 import { User } from '../users/entities/users.entity';
 import { Subscription } from './entities/subscription.entity';
+import axios from 'axios';
 
 @Injectable()
 export class PaypalService {
@@ -264,6 +266,9 @@ export class PaypalService {
   }
 
   async createSubscription(parameterId: number, userId: string) {
+    const user = await this.userRepo.findOne({ where: {id: userId}});
+
+    // if(user.subscriptionStatus === 'subscribed')
     let subscriptionPlan: string | null;
 
     let subscriptionId: string | null;
@@ -287,10 +292,6 @@ export class PaypalService {
       throw new BadRequestException('incorrect URL Request');
     }
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-
-    
-    console.log(subscriptionId)
     const requestBody = {
       plan_id: subscriptionId,
       quantity: '1',
@@ -311,7 +312,7 @@ export class PaypalService {
         cancel_url: 'https://www.google.com/cancelUrl',
       },
     };
-    console.log(requestBody)
+    
 
     const accessToken = await this.getToken();
     const requestConfig = {
@@ -334,6 +335,7 @@ export class PaypalService {
       )?.href;
 
       const subscription = response.data;
+      console.log('subscription data for createing'+ JSON.stringify(subscription, null, 2))
       
 
       const subscriptionData = this.subscriptionRepo.create({
@@ -365,9 +367,7 @@ export class PaypalService {
     } catch (error) {
       console.log(error);
       console.error('PayPal API Error:', error.respomse?.data || error.message);
-      throw new Error(
-        `Failed to create PayPal subscription: ${error.response?.data?.message || error.message}`,
-      );
+      throw new InternalServerErrorException('Unable to process your request at this time.');
     }
   }
 
@@ -415,4 +415,327 @@ const requestConfig = {
     }
   }
 
+  async getSubscriptionDetails(subscriptionId) {
+    const token = await this.getAccessToken();
+
+    try {
+      const response = await axios.get(`https://api-m.sandbox.paypal.com/v1/billing/subscriptions${subscriptionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return response.data; // Return subscription details
+    } catch (error) {
+      console.error('Error fetching subscription details:', error.response?.data || error.message);
+      throw new Error('Failed to fetch subscription details');
+    }
+  }
+
+  async updateSubscription(subscriptionId: string) {
+
+
+    const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions/${subscriptionId}`;
+    const accessToken = await this.getToken();
+    const requestConfig = {
+      headers:{
+       Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+       prefer: 'return=representation'
+    },
+    };
+    
+    const body = [
+      { 
+        "op": "replace", 
+        "path": "/plan/billing_cycles/@sequence==1/pricing_scheme/fixed_price", 
+        "value": { "currency_code": "USD", "value": "50.00" } 
+      },
+      { 
+        "op": "replace", 
+        "path": "/plan/billing_cycles/@sequence==2/pricing_scheme/tiers", 
+        "value": [
+          { "starting_quantity": "1", "ending_quantity": "1000", "amount": { "value": "500", "currency_code": "USD" } }, 
+          { "starting_quantity": "1001", "amount": { "value": "2000", "currency_code": "USD" } }
+        ] 
+      },
+      { 
+        "op": "replace", 
+        "path": "/plan/payment_preferences/auto_bill_outstanding", 
+        "value": true 
+      },
+      { 
+        "op": "replace", 
+        "path": "/plan/payment_preferences/payment_failure_threshold", 
+        "value": 1 
+      },
+      { 
+        "op": "replace", 
+        "path": "/plan/taxes/percentage", 
+        "value": "10" 
+      }
+    ];
+
+    try {
+      const response = await lastValueFrom(
+        this.httpService.patch(paypalUrl, body,  requestConfig )
+      );
+            return response.data;
+    } catch (error) {
+      console.error('Error updating PayPal subscription:', error);
+      throw error;
+    }
+  }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// async createSubscription(parameterId: number, userId: string) {
+//   // Check the user's current subscription status
+//   const user = await this.userRepo.findOne({ where: { id: userId } });
+  
+//   if (!user) {
+//     throw new BadRequestException('User not found');
+//   }
+
+//   if (user.subscriptionStatus === 'subscribed') {
+//     return 'You are already subscribed.';
+//   }
+
+//   let subscriptionPlan: string | null;
+//   let subscriptionId: string | null;
+//   const subscriptionIds = (await this.billingRepo.find()).map(billing => billing.id);
+
+//   // Determine the subscription plan based on parameterId
+//   switch (parameterId) {
+//     case 1:
+//       subscriptionId = subscriptionIds[0];
+//       subscriptionPlan = 'monthly';
+//       break;
+//     case 2:
+//       subscriptionId = subscriptionIds[1];
+//       subscriptionPlan = 'six-month';
+//       break;
+//     case 3:
+//       subscriptionId = subscriptionIds[2];
+//       subscriptionPlan = 'yearly';
+//       break;
+//     case 4:
+//       subscriptionId = subscriptionIds[3];
+//       subscriptionPlan = 'per-post';
+//       break;
+//     default:
+//       throw new BadRequestException('Incorrect URL Request');
+//   }
+
+//   console.log(subscriptionId);
+//   const requestBody = {
+//     plan_id: subscriptionId,
+//     quantity: '1',
+//     subscriber: {
+//       name: { given_name: user.firstName, surname: user.lastName },
+//       email_address: user.email,
+//     },
+//     application_context: {
+//       brand_name: 'HabeshaNet',
+//       locale: 'en-US',
+//       shipping_preference: 'NO_SHIPPING',
+//       user_action: 'SUBSCRIBE_NOW',
+//       payment_method: {
+//         payer_selected: 'PAYPAL',
+//         payee_preferred: 'IMMEDIATE_PAYMENT_REQUIRED',
+//       },
+//       return_url: 'https://www.godigitalethio.com/news/returnUrl',
+//       cancel_url: 'https://www.google.com/cancelUrl',
+//     },
+//   };
+
+//   console.log(requestBody);
+
+//   const accessToken = await this.getToken();
+//   const requestConfig = {
+//     headers: {
+//       Authorization: `Bearer ${accessToken}`,
+//       'Content-Type': 'application/json',
+//       Prefer: 'return=representation',
+//     },
+//   };
+
+//   const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions`;
+
+//   try {
+//     const response = await firstValueFrom(
+//       this.httpService.post(paypalUrl, requestBody, requestConfig),
+//     );
+
+//     const approveLink = response.data.links.find(link => link.rel === 'approve')?.href;
+
+//     const subscription = response.data;
+
+//     const subscriptionData = this.subscriptionRepo.create({
+//       id: subscription.id,
+//       plan_id: subscription.plan_id,
+//       status: subscription.status,
+//       status_update_time: subscription.status_update_time,
+//       start_time: subscription.start_time,
+//       user_Id: userId,
+//       subscriber_given_name: subscription.subscriber.name.given_name,
+//       subscriber_surname: subscription.subscriber.name.surname,
+//       subscriber_email_address: subscription.subscriber.email_address,
+//       create_time: subscription.create_time,
+//       subscription_links: subscription.links,
+//     });
+
+//     await this.subscriptionRepo.save(subscriptionData);
+
+//     await this.userRepo.update(
+//       { id: userId },
+//       {
+//         subscriptionPlan,
+//         subscriptionId: subscription.id,
+//         subscriptionStatus: 'subscribed',
+//         subscriptionUpdated: new Date(),
+//       },
+//     );
+
+//     return approveLink;
+//   } catch (error) {
+//     console.log(error);
+//     console.error('PayPal API Error:', error.response?.data || error.message);
+//     throw new Error(
+//       `Failed to create PayPal subscription: ${error.response?.data?.message || error.message}`,
+//     );
+//   }
+// }

@@ -8,7 +8,8 @@ import {
   Request,
   Response,
   UseGuards,
-  Req
+  Req,
+  Patch
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Request as ExpressRequest, Response as ExxpressResponse } from 'express';
@@ -18,6 +19,7 @@ import { Subscription } from './entities/subscription.entity';
 import { Repository } from 'typeorm';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { User } from '../users/entities/users.entity';
+import { BillingPlan } from './entities/billing.entity';
 
 
 interface WebhookVerificationResponse {
@@ -31,6 +33,8 @@ export class PaypalController {
     private readonly subscriptionRepo: Repository<Subscription>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(BillingPlan)
+    private readonly billingRepo: Repository<BillingPlan>,
     private readonly paypalService: PaypalService,
     private readonly mailerservice: CustomMailerService,
   ) {}
@@ -38,8 +42,11 @@ export class PaypalController {
   @Post('get-token')
   @UseGuards(JwtAuthGuard)
   async getToken() {
-    const tokenResponse = await this.paypalService.getAccessToken();
-    return tokenResponse;
+    try {
+      return await this.paypalService.getAccessToken();
+    } catch (error) {
+      throw new HttpException('Unable to retrieve access token', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   //create product name
@@ -89,94 +96,181 @@ export class PaypalController {
     }
   }
 
-
-@Post('paypal-webhook')
-async handleWebhook(@Req() req: Request, @Response() res: ExxpressResponse) {
-  const authAlgo = req.headers['paypal-auth-algo'];
+  @Post('paypal-webhook')
+  async handleWebhook(@Req() req: Request, @Response() res: ExxpressResponse) {
+   const authAlgo = req.headers['paypal-auth-algo'];
   const certUrl = req.headers['paypal-cert-url'];
   const transmissionId = req.headers['paypal-transmission-id'];
   const transmissionSig = req.headers['paypal-transmission-sig'];
   const transmissionTime = req.headers['paypal-transmission-time'];
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+  
+    const verifyRequest = {
+      auth_algo: authAlgo,
+      cert_url: certUrl,
+      transmission_id: transmissionId,
+      transmission_sig: transmissionSig,
+      transmission_time: transmissionTime,
+      webhook_id: webhookId,
+      webhook_event: req.body,
+    };
+  
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const resource = body.resource || {};
+      
+      console.log(JSON.stringify(resource, null, 2));
+  
+      switch (body.event_type) {
+        case 'BILLING.SUBSCRIPTION.ACTIVATED':
+          await this.handleSubscriptionActivated(resource);
+          break;
+  
+        case 'BILLING.SUBSCRIPTION.CANCELLED':
+          await this.handleSubscriptionCancelled(resource);
+          break;
+  
+        case 'PAYMENT.SALE.COMPLETED':
+          await this.handlePaymentCompleted(resource);
+          break;
+  
+        default:
+          console.log(`Unhandled event type: ${body.event_type}`);
+      }
+  
+      res.status(HttpStatus.OK).send();
+    } catch (error) {
+      console.error('Error handling webhook event:', error.message);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error handling webhook event');
+    }
+  }
+  
+  private async handleSubscriptionActivated(resource) {
+    const subscriptionId = resource.id; // Use resource.id for subscription ID
+    const planID = resource.plan_id;
 
-  const verifyRequest = {
-    auth_algo: authAlgo,
-    cert_url: certUrl,
-    transmission_id: transmissionId,
-    transmission_sig: transmissionSig,
-    transmission_time: transmissionTime,
-    webhook_id: webhookId,
-    webhook_event: req.body, 
-  };
+    const user = await this.subscriptionRepo.findOne({
+            where: { id: subscriptionId },
+            select: ['user_Id', 'subscriber_given_name', 'subscriber_email_address'],
+          });
 
-  let currentDate: Date = new Date();
-  let user_Id: string;
+          const priceAmount = await this.billingRepo.findOne({
+            where: {id: planID },
+            select: ['value', 'interval_count', 'interval_unit']
+          })
+          
 
-  try {
-    // Parse the body from the request
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-
-    const resource = body.resource || {};
-    const subscriptionId = resource.id;
-
-    if (!subscriptionId) {
-      throw new Error('Subscription ID is missing from the webhook payload');
+          const {value: totalAmount, interval_count: interval_count, interval_unit: interval_unit } = priceAmount;
+  
+    if (!user) {
+      throw new Error('User associated with the subscription not found');
     }
 
-    const getuserId = await this.subscriptionRepo.findOne({
+    console.log("Subscription resource "+ JSON.stringify(resource, null , 2))
+  
+    const { user_Id: userId, subscriber_given_name: userName, subscriber_email_address: userEmail } = user;
+    // const totalAmount = resource.billing_info.last_payment.amount.value ;
+    const currency = resource.billing_info.last_payment.amount.currency_code ;
+    const createTime = resource.create_time;
+    const nextBillingDate = new Date(resource.billing_info.next_billing_time);
+    const subscriptionPlan = this.determineSubscriptionPlan(interval_unit, interval_count);
+
+   
+  
+    await this.paypalService.updateSubscriptionStatus(subscriptionId, 'ACTIVE', new Date());
+    await this.userRepo.update({ id: userId }, { subscriptionUpdated: new Date(), subscriptionStatus: 'subscribed' });
+    await this.mailerservice.sendEmailNotification(userName, 'Activated', userEmail, totalAmount, createTime, currency, subscriptionPlan, nextBillingDate);
+    console.log('Subscription activated, status updated to ACTIVE from wwebhook');
+  }
+  
+  private async handleSubscriptionCancelled(resource) {
+    const subscriptionId = resource.id; // Use resource.id for subscription ID
+    const planID = resource.plan_id
+
+    console.log('resource'+JSON.stringify(resource, null, 2))
+    console.log('subscription active '+ subscriptionId)
+    console.log('paln id'+planID)
+    const user = await this.subscriptionRepo.findOne({
       where: { id: subscriptionId },
       select: ['user_Id', 'subscriber_given_name', 'subscriber_email_address'],
     });
 
-    const userId = getuserId?.user_Id;
-    const userName = getuserId?.subscriber_given_name;
-    const userEmail = getuserId?.subscriber_email_address;
+    const priceAmount = await this.billingRepo.findOne({
+      where: {id: planID },
+      select: ['value','interval_count', 'interval_unit']
+    })
 
-    console.log('log from web hook email'+userEmail)
+    console.log('resource'+JSON.stringify(resource, null, 2))
+    console.log('subscription active '+ subscriptionId)
+    console.log('paln id'+planID)
 
-    switch (body.event_type) {
-      // case 'BILLING.SUBSCRIPTION.CREATED':
-      //   await this.paypalService.updateSubscriptionStatus(subscriptionId, 'APPROVAL_PENDING', currentDate);
-      //   await this.mailerservice.sendEmailNotification(subscriptionId, 'APPROVAL_PENDING');
-      //   console.log('Subscription activated, status updated to APPROVAL_PENDING');
-      //   break;
 
-      case 'BILLING.SUBSCRIPTION.ACTIVATED':
-        await this.paypalService.updateSubscriptionStatus(subscriptionId, 'ACTIVE', currentDate);
-        await this.userRepo.update(
-          { id: userId },
-          { subscriptionUpdated: new Date(), subscriptionStatus: 'subscribed' }
-        );
-        await this.mailerservice.sendEmailNotification(userName, 'Activated', userEmail);
-        console.log('Subscription activated, status updated to ACTIVATED');
-        break;
+    const {value: totalAmount, interval_count: interval_count, interval_unit: interval_unit } = priceAmount;
 
-      case 'BILLING.SUBSCRIPTION.CANCELLED':
-        await this.paypalService.updateSubscriptionStatus(subscriptionId, 'CANCELLED', currentDate);
-        await this.userRepo.update(
-          { id: userId },
-          { subscriptionUpdated: new Date(), subscriptionStatus: 'unsubscribed' }
-        );
-        await this.mailerservice.sendEmailNotification(userName, 'CANCELED', userEmail);
-        console.log('Subscription canceled, status updated to CANCELED');
-        break;
+    console.log('price'+totalAmount+'interval unit'+interval_unit)
 
-      case 'PAYMENT.SALE.COMPLETED':
-        await this.paypalService.updateSubscriptionStatus(subscriptionId, 'PAID', currentDate);
-        await this.mailerservice.sendEmailNotification(userName, 'PAID', userEmail);
-        console.log('Payment completed, subscription status updated to PAID');
-        break;
-
+  
+    if (!user) {
+      throw new Error('User associated with the subscription not found');
+    }
+  
+    const { user_Id: userId, subscriber_given_name: userName, subscriber_email_address: userEmail } = user;
+    // const lastPaymentValue = resource.billing_info.last_payment.amount.value || "0.0";
+    const currency = resource.billing_info.last_payment.amount.currency_code || 'USD';
+    const subscriptionPlan = this.determineSubscriptionPlan(interval_unit, interval_count );
+    console.log('subscription cancel plan' + subscriptionPlan)
+  
+    await this.paypalService.updateSubscriptionStatus(subscriptionId, 'CANCELLED', new Date());
+    await this.userRepo.update({ id: userId }, { subscriptionUpdated: new Date(), subscriptionStatus: 'unsubscribed' });
+    await this.mailerservice.sendCancelEmailNotification(userName, 'CANCELLED', userEmail, totalAmount, resource.update_time, currency);
+    console.log('Subscription canceled, status updated to CANCELED form webhook');
+  }
+  
+  private determineSubscriptionPlan(intervalUnit: string, intervalCount: number): string {
+    switch (intervalUnit) {
+      case 'MONTH':
+        return intervalCount === 6 ? 'Six-Month' : 'Month';
+      case 'DAY':
+        return 'Daily';
+      case 'YEAR':
+        return 'Yearly';
       default:
-        console.log(`Unhandled event type: ${body.event_type}`);
+        return 'Unknown';
+    }
+  }
+
+  private async handlePaymentCompleted(resource) {
+    console.log('subscripiton id'+ resource.billing_agreement_id)
+    const subscriptionId = resource.billing_agreement_id;
+    const transactionId = resource.id;
+    const createTime = resource.create_time;
+
+    const user = await this.subscriptionRepo.findOne({
+      where: { id: subscriptionId },
+      select: ['user_Id', 'subscriber_given_name', 'subscriber_email_address', 'plan_id'],
+    });
+  
+    if (!user) {
+      throw new Error('User associated with the payment not found');
     }
 
-    res.status(HttpStatus.OK).send();
-  } catch (error) {
-    console.error('Error handling webhook event:', error);
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error handling webhook event');
+     const { user_Id: userId, subscriber_given_name: userName, subscriber_email_address: userEmail, plan_id: planID } = user;
+
+     const amount = await this.billingRepo.findOne({
+      where: {id: planID },
+      select: ['value', 'currency_code']
+    })
+
+    const{value: value, currency_code: currencyCode} = amount
+
+    await this.mailerservice.sendPayemntConformationEmailNotification(userName, transactionId, value,userEmail, createTime,  currencyCode )
+  
+
   }
-}
+
+
+
+
 
 //Canceel Subscription
 @Post('cancel')
@@ -197,12 +291,271 @@ async handleWebhoo(@Request() req: ExpressRequest, @Response() res: ExxpressResp
     await this.paypalService.cancelSubscription(subscriptionId, reason);
     console.log('Subscription canceled successfully');
     await this.paypalService.updateSubscriptionStatus(subscriptionId, 'CANCELED', updateDate );
+  
 
     res.status(HttpStatus.OK).send();
   } catch (error) {
     console.error('Error handling webhook event:', error);
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error handling webhook event');
   }
+
 }
+
+@Patch('subscription')
+@UseGuards(JwtAuthGuard)
+async updateSubscription(
+  @Request() req: ExpressRequest
+) {
+  const userId = req.user?.['sub'];
+  const subscriptionId =( await this.userRepo.findOne({where: {id: userId}})).subscriptionId;
+  return await this.paypalService.updateSubscription(subscriptionId);
+}
+
+}
+
+
+
+
+
   
-}
+  
+  
+
+//   @Post('paypal-webhook')
+// async handleWebhook(@Req() req: Request, @Response() res: ExxpressResponse) {
+//   const authAlgo = req.headers['paypal-auth-algo'];
+//   const certUrl = req.headers['paypal-cert-url'];
+//   const transmissionId = req.headers['paypal-transmission-id'];
+//   const transmissionSig = req.headers['paypal-transmission-sig'];
+//   const transmissionTime = req.headers['paypal-transmission-time'];
+//   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+
+  
+
+//   const verifyRequest = {
+//     auth_algo: authAlgo,
+//     cert_url: certUrl,
+//     transmission_id: transmissionId,
+//     transmission_sig: transmissionSig,
+//     transmission_time: transmissionTime,
+//     webhook_id: webhookId,
+//     webhook_event: req.body,
+//   };
+
+//   let currentDate = new Date();
+
+//   try {
+//     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+//     const resource = body.resource || {};
+//     const subscriptionId = resource.id;
+//     const createTime = new Date(resource.create_time); // Creation time of the subscription
+//     const intervalUnit = resource.billing_info?.cycle_executions?.[0]?.frequency?.interval_unit; // E.g., 'MONTH', 'DAY'
+//     const intervalCount = resource.billing_info?.cycle_executions?.[0]?.frequency?.interval_count || 1; // E.g., '1', '2'
+
+
+
+//     // const totalAmount = resource.amount.total;
+//     const currency = resource.amount?.currency || 'USD';
+//     // const billingAgreementId = resource.billing_agreement_id;
+//     // let subscriptionPlan = '';
+
+//      // Calculate the next billing date
+//      let nextBillingDate = new Date(createTime);
+
+
+
+//     if (!subscriptionId) {
+//       throw new Error('Subscription ID is missing from the webhook payload');
+//     }
+
+//     const getUserId = await this.subscriptionRepo.findOne({
+//       where: { id: subscriptionId },
+//       select: ['user_Id', 'subscriber_given_name', 'subscriber_email_address'],
+//     });
+
+//     if (!getUserId) {
+//       throw new Error('User associated with the subscription not found');
+//     }
+
+//     const { user_Id: userId, subscriber_given_name: userName, subscriber_email_address: userEmail } = getUserId;
+
+//     switch (body.event_type) {
+//       case 'BILLING.SUBSCRIPTION.ACTIVATED':
+//         console.log("subscription Data for activated"+JSON.stringify(resource, null, 2));
+//         const totalAmount = resource.amount?.total || "0.0";
+//         const createTime = resource.create_time;
+
+//         // Extract interval and frequency details
+//         const intervalUnit = resource.billing_info?.cycle_executions?.[0]?.frequency?.interval_unit;
+//         const intervalCount = resource.billing_info?.cycle_executions?.[0]?.frequency?.interval_count || 1;
+//         let nextBillingDate = new Date(resource.billing_info?.next_billing_time);
+//         let subscriptionPlan = determineSubscriptionPlan(intervalUnit, intervalCount);
+
+//         await this.paypalService.updateSubscriptionStatus(subscriptionId, 'ACTIVE', currentDate);
+//         await this.userRepo.update({ id: userId }, { subscriptionUpdated: currentDate, subscriptionStatus: 'subscribed' });
+//         await this.mailerservice.sendEmailNotification(userName, 'Activated', userEmail, totalAmount, createTime, currency,subscriptionPlan, nextBillingDate);
+//         console.log('Subscription activated, status updated to ACTIVE');
+//         break;
+
+//       case 'BILLING.SUBSCRIPTION.CANCELLED':
+//         const lastPaymentValue = resource.billing_info.last_payment.amount.value;
+//         const currencyCode = resource.billing_info.last_payment.amount.currency_code || 'USD';  // Default to 'USD' if undefined
+//         const updateTime = resource.update_time;
+//         console.log("subscription Data for cancel"+JSON.stringify(resource, null, 2));
+        
+//         await this.paypalService.updateSubscriptionStatus(subscriptionId, 'CANCELLED', currentDate);
+//         await this.userRepo.update({ id: userId }, { subscriptionUpdated: currentDate, subscriptionStatus: 'unsubscribed' });
+//         await this.mailerservice.sendEmailNotification(userName, 'CANCELED', userEmail, lastPaymentValue, createTime, currencyCode, subscriptionPlan, updateTime);
+//         console.log('Subscription canceled, status updated to CANCELED');
+//         break;
+
+//       case 'PAYMENT.SALE.COMPLETED':
+//         await this.paypalService.updateSubscriptionStatus(subscriptionId, 'PAID', currentDate);
+//         await this.mailerservice.sendEmailNotification(userName, 'PAID', userEmail, totalAmount, createTime, currency, subscriptionPlan, nextBillingDate);
+//         console.log('Payment completed, subscription status updated to PAID');
+//         break;
+
+//       default:
+//         console.log(`Unhandled event type: ${body.event_type}`);
+//     }
+
+//     res.status(HttpStatus.OK).send();
+//   } catch (error) {
+//     console.error('Error handling webhook event:', error.message);
+//     res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error handling webhook event');
+//   }
+
+//   function determineSubscriptionPlan(intervalUnit: string, intervalCount: number): string {
+//     switch (intervalUnit) {
+//       case 'MONTH':
+//         return intervalCount === 6 ? 'Six-Month' : 'Monthly';
+//       case 'DAY':
+//         return 'Daily';
+//       case 'YEAR':
+//         return 'Yearly';
+//       default:
+//         return 'Unknown';
+//     }
+// }
+// }
+
+
+
+
+// @Post('paypal-webhook')
+// async handleWebhook(@Req() req: Request, @Response() res: ExxpressResponse) {
+//   const authAlgo = req.headers['paypal-auth-algo'];
+//   const certUrl = req.headers['paypal-cert-url'];
+//   const transmissionId = req.headers['paypal-transmission-id'];
+//   const transmissionSig = req.headers['paypal-transmission-sig'];
+//   const transmissionTime = req.headers['paypal-transmission-time'];
+//   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+
+//   const verifyRequest = {
+//     auth_algo: authAlgo,
+//     cert_url: certUrl,
+//     transmission_id: transmissionId,
+//     transmission_sig: transmissionSig,
+//     transmission_time: transmissionTime,
+//     webhook_id: webhookId,
+//     webhook_event: req.body, 
+//   };
+
+//   let currentDate: Date = new Date();
+//   let user_Id: string;
+
+//   try {
+//     // Parse the body from the request
+//     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+//     const resource = body.resource || {};
+//     const subscriptionId = resource.id;
+
+//     if (!subscriptionId) {
+//       throw new Error('Subscription ID is missing from the webhook payload');
+//     }
+
+//     const getuserId = await this.subscriptionRepo.findOne({
+//       where: { id: subscriptionId },
+//       select: ['user_Id', 'subscriber_given_name', 'subscriber_email_address'],
+//     });
+
+//     const userId = getuserId?.user_Id;
+//     const userName = getuserId?.subscriber_given_name;
+//     const userEmail = getuserId?.subscriber_email_address;
+
+//     console.log('log from web hook email'+userEmail)
+
+//     switch (body.event_type) {
+//       // case 'BILLING.SUBSCRIPTION.CREATED':
+//       //   await this.paypalService.updateSubscriptionStatus(subscriptionId, 'APPROVAL_PENDING', currentDate);
+//       //   await this.mailerservice.sendEmailNotification(subscriptionId, 'APPROVAL_PENDING');
+//       //   console.log('Subscription activated, status updated to APPROVAL_PENDING');
+//       //   break;
+
+//       case 'BILLING.SUBSCRIPTION.ACTIVATED':
+//         await this.paypalService.updateSubscriptionStatus(subscriptionId, 'ACTIVE', currentDate);
+//         await this.userRepo.update(
+//           { id: userId },
+//           { subscriptionUpdated: new Date(), subscriptionStatus: 'subscribed' }
+//         );
+//         await this.mailerservice.sendEmailNotification(userName, 'Activated', userEmail);
+//         console.log('Subscription activated, status updated to ACTIVATED');
+//         break;
+
+//       case 'BILLING.SUBSCRIPTION.CANCELLED':
+//         await this.paypalService.updateSubscriptionStatus(subscriptionId, 'CANCELLED', currentDate);
+//         await this.userRepo.update(
+//           { id: userId },
+//           { subscriptionUpdated: new Date(), subscriptionStatus: 'unsubscribed' }
+//         );
+//         await this.mailerservice.sendEmailNotification(userName, 'CANCELED', userEmail);
+//         console.log('Subscription canceled, status updated to CANCELED');
+//         break;
+
+//       case 'PAYMENT.SALE.COMPLETED':
+//         await this.paypalService.updateSubscriptionStatus(subscriptionId, 'PAID', currentDate);
+//         await this.mailerservice.sendEmailNotification(userName, 'PAID', userEmail);
+//         console.log('Payment completed, subscription status updated to PAID');
+//         break;
+
+//       default:
+//         console.log(`Unhandled event type: ${body.event_type}`);
+//     }
+
+//     res.status(HttpStatus.OK).send();
+//   } catch (error) {
+//     console.error('Error handling webhook event:', error);
+//     res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error handling webhook event');
+//   }
+// }
+
+// //Canceel Subscription
+// @Post('cancel')
+// @UseGuards(JwtAuthGuard)
+// async handleWebhoo(@Request() req: ExpressRequest, @Response() res: ExxpressResponse) {
+
+//   const userId = req.user["sub"]
+//   const subscriptionId =( await this.userRepo.findOne({where: {id: userId}})).subscriptionId;
+
+//     console.log(subscriptionId)
+
+//   let currentDateString: string = new Date().toISOString();
+//   let updateDate: Date = new Date(currentDateString); 
+
+//   try {
+//     const reason = 'Stop Subscription';
+
+//     await this.paypalService.cancelSubscription(subscriptionId, reason);
+//     console.log('Subscription canceled successfully');
+//     await this.paypalService.updateSubscriptionStatus(subscriptionId, 'CANCELED', updateDate );
+  
+
+//     res.status(HttpStatus.OK).send();
+//   } catch (error) {
+//     console.error('Error handling webhook event:', error);
+//     res.status(HttpStatus.INTERNAL_SERVER_ERROR).send('Error handling webhook event');
+//   }
+// }
+  
+// }

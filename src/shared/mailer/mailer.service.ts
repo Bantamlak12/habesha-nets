@@ -6,9 +6,10 @@ import Mail from 'nodemailer/lib/mailer';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
-import { subscriptionconformationEmail } from 'src/shared/mailer/templates/subscription.template';
+import { subscriptionConfirmationEmail } from 'src/shared/mailer/templates/subscription.template';
 import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
-import { subscriptioncancelEmail } from './templates/subscription.cancel.template';
+import { subscriptionCancelEmail } from './templates/subscription.cancel.template';
+import { subscriptionPayemntConformationEmail } from './templates/subscription.payemnt-conformation';
 
 
 @Injectable()
@@ -47,25 +48,21 @@ export class CustomMailerService {
     }
   }
 
-  async sendEmailNotification(userName: string, status: string, userEmail: string) {
-    // const subscription = await this.subscriptionRepo.findOne({
-    //   where: { id: subscriptionId }});
-    // if (!subscription) {
-    //   throw new Error('Subscription not found');
-    // }
-
-    console.log('email'+userEmail);
+  async sendEmailNotification(userName: string, status: string, userEmail: string, totalAmount: string, createTime: Date, currency: string, subscriptionPlan: string, nextBillingDate: Date) {
 
   
-  if (status == 'Activated') {
-    const emailBody = subscriptionconformationEmail(
+ 
+    const emailBody = subscriptionConfirmationEmail(
       'Habesha Nets',
       new Date().getFullYear(),
       `${userName}`,
-      `${status}`,
+      `${totalAmount}`,
+      `${subscriptionPlan}`,
+      `${nextBillingDate}`,
+      `${currency}`
     );
 
-    const subject = 'Subscription Payment';
+    const subject = 'Subscription Activated';
   
     // const emailContent = `Your subscription with ID ${userEmail} has been ${status}.`;
     await this.sendEmail(
@@ -73,12 +70,21 @@ export class CustomMailerService {
       subject,
       emailBody
     );
-  } else if (status == 'CANCELED'){
-    const emailBody = subscriptioncancelEmail(
+
+  
+  }
+
+  async sendCancelEmailNotification(userName: string, status: string, userEmail: string, totalAmount: string, update_time: Date, currency: string) {
+
+
+    const emailBody = subscriptionCancelEmail(
       'Habesha Nets',
       new Date().getFullYear(),
       `${userName}`,
+      `${totalAmount}`,
+      `${update_time}`,
       `${status}`,
+      `$${currency}`
     );
 
     const subject = 'Subscription Payment Canceled';
@@ -89,6 +95,30 @@ export class CustomMailerService {
       subject,
       emailBody
     );
+
   }
+
+  async sendPayemntConformationEmailNotification(userName: string, transaction_id: string, amount: string, userEmail: string, date: Date, currency: string) {
+
+
+
+    const emailBody = subscriptionPayemntConformationEmail(
+      'Habesha Nets',
+      new Date().getFullYear(),
+      `${userName}`,
+      `${transaction_id}`,
+      `${date}`,
+      `${amount}`,
+      `$${currency}`
+    );
+
+    const subject = 'Subscription Payment Conformation';
+  
+    await this.sendEmail(
+      userEmail,
+      subject,
+      emailBody
+    );
+
   }
 }
