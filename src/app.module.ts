@@ -15,6 +15,7 @@ import { Product } from './modules/paypal/entities/product.entity';
 import { OAuth2Token } from './modules/paypal/entities/token.entity';
 import { Subscription } from './modules/paypal/entities/subscription.entity';
 import { ResetTokens } from './modules/auth/entities/password-reset-token.entity';
+import { JobPost } from './modules/users/entities/create-post.entity';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ResetTokens } from './modules/auth/entities/password-reset-token.entity
           OAuth2Token,
           Subscription,
           ResetTokens,
+          JobPost,
         ],
         synchronize: true,
         ssl:

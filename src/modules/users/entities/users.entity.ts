@@ -9,6 +9,7 @@ import {
   TableInheritance,
   UpdateDateColumn,
 } from 'typeorm';
+import { JobPost } from './create-post.entity';
 
 interface Qualifications {
   degree: string;
@@ -160,4 +161,7 @@ export abstract class User {
 
   @OneToMany(() => ResetTokens, (resetTokens) => resetTokens.user)
   resetTokens: ResetTokens[];
+
+  @OneToMany(() => JobPost, (jobPost) => jobPost.postedBy)
+  jobPosts: JobPost[];
 }
