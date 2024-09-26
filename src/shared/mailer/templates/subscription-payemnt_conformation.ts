@@ -1,14 +1,13 @@
 export function subscriptionPayemntConformationEmail(
-    companyName: string,
-    year: number,
-    userName: string,
-    transaction_id: string,
-    date: string,
-    totalamount: string,
-    currency: string
-  ) {
-
-    return `
+  companyName: string,
+  year: number,
+  userName: string,
+  transaction_id: string,
+  date: string,
+  totalamount: string,
+  currency: string,
+) {
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,5 +67,5 @@ export function subscriptionPayemntConformationEmail(
     </div>
 </body>
 </html>
-`
+`;
 }

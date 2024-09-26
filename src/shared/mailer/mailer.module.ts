@@ -5,10 +5,7 @@ import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-    Subscription
-  ]),ConfigModule],
+  imports: [TypeOrmModule.forFeature([Subscription]), ConfigModule],
   providers: [CustomMailerService],
   exports: [CustomMailerService],
 })

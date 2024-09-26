@@ -1,14 +1,14 @@
 export function subscriptionConfirmationEmail(
-    companyName: string,
-    year: number,
-    userName: string,
-    paymentAmount: string,
-    subscriptionPlan: string,
-    nextBillingDate: string,
-    currenct: string
-  ) {
-      const formattedDate = new Date().toLocaleDateString();
-    return `
+  companyName: string,
+  year: number,
+  userName: string,
+  paymentAmount: string,
+  subscriptionPlan: string,
+  nextBillingDate: string,
+  currenct: string,
+) {
+  const formattedDate = new Date().toLocaleDateString();
+  return `
     <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -81,4 +81,4 @@ export function subscriptionConfirmationEmail(
   </body>
   </html>
   `;
-  }
+}
