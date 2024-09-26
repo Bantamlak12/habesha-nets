@@ -266,7 +266,7 @@ export class PaypalService {
   }
 
   async createSubscription(parameterId: number, userId: string) {
-    const user = await this.userRepo.findOne({ where: {id: userId}});
+    const user = await this.userRepo.findOne({ where: { id: userId } });
 
     // if(user.subscriptionStatus === 'subscribed')
     let subscriptionPlan: string | null;
@@ -312,7 +312,6 @@ export class PaypalService {
         cancel_url: 'https://www.google.com/cancelUrl',
       },
     };
-    
 
     const accessToken = await this.getToken();
     const requestConfig = {
@@ -324,8 +323,7 @@ export class PaypalService {
     };
 
     const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions`;
-  
-  
+
     try {
       const response = await firstValueFrom(
         this.httpService.post(paypalUrl, requestBody, requestConfig),
@@ -335,15 +333,17 @@ export class PaypalService {
       )?.href;
 
       const subscription = response.data;
-      console.log('subscription data for createing'+ JSON.stringify(subscription, null, 2))
-      
+      console.log(
+        'subscription data for createing' +
+          JSON.stringify(subscription, null, 2),
+      );
 
       const subscriptionData = this.subscriptionRepo.create({
         id: subscription.id,
         plan_id: subscription.plan_id,
         status: subscription.status,
         status_update_time: subscription.status_update_time,
-        start_time:  subscription.start_time,
+        start_time: subscription.start_time,
         user_Id: userId,
         subscriber_given_name: subscription.subscriber.name.given_name,
         subscriber_surname: subscription.subscriber.name.surname,
@@ -367,21 +367,32 @@ export class PaypalService {
     } catch (error) {
       console.log(error);
       console.error('PayPal API Error:', error.respomse?.data || error.message);
-      throw new InternalServerErrorException('Unable to process your request at this time.');
+      throw new InternalServerErrorException(
+        'Unable to process your request at this time.',
+      );
     }
   }
 
-  async updateSubscriptionStatus(subscriptionId: string, status: string, status_update_time: Date): Promise<void> {
-    await this.subscriptionRepo.update({ id: subscriptionId }, { status,  status_update_time });
+  async updateSubscriptionStatus(
+    subscriptionId: string,
+    status: string,
+    status_update_time: Date,
+  ): Promise<void> {
+    await this.subscriptionRepo.update(
+      { id: subscriptionId },
+      { status, status_update_time },
+    );
   }
 
-  async cancelSubscription(subscriptionId: string, reason: string): Promise<void> {
-
+  async cancelSubscription(
+    subscriptionId: string,
+    reason: string,
+  ): Promise<void> {
     const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions/${subscriptionId}/cancel`;
 
     const accessToken = await this.getToken();
 
-const requestConfig = {
+    const requestConfig = {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -393,11 +404,9 @@ const requestConfig = {
       reason,
     };
 
-
-
     try {
       const response = await lastValueFrom(
-        this.httpService.post(paypalUrl, body, requestConfig)
+        this.httpService.post(paypalUrl, body, requestConfig),
       );
 
       if (response.status !== HttpStatus.NO_CONTENT) {
@@ -407,9 +416,13 @@ const requestConfig = {
         );
       }
     } catch (error) {
-      console.error('Failed to cancel subscription:', error.response?.data || error.message);
+      console.error(
+        'Failed to cancel subscription:',
+        error.response?.data || error.message,
+      );
       throw new HttpException(
-        'Failed to cancel PayPal subscription: ' + (error.response?.data?.message || error.message),
+        'Failed to cancel PayPal subscription: ' +
+          (error.response?.data?.message || error.message),
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -419,213 +432,90 @@ const requestConfig = {
     const token = await this.getAccessToken();
 
     try {
-      const response = await axios.get(`https://api-m.sandbox.paypal.com/v1/billing/subscriptions${subscriptionId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await axios.get(
+        `https://api-m.sandbox.paypal.com/v1/billing/subscriptions${subscriptionId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       return response.data; // Return subscription details
     } catch (error) {
-      console.error('Error fetching subscription details:', error.response?.data || error.message);
+      console.error(
+        'Error fetching subscription details:',
+        error.response?.data || error.message,
+      );
       throw new Error('Failed to fetch subscription details');
     }
   }
 
   async updateSubscription(subscriptionId: string) {
-
-
     const paypalUrl = `${this.PAYPAL_API}/v1/billing/subscriptions/${subscriptionId}`;
     const accessToken = await this.getToken();
     const requestConfig = {
-      headers:{
-       Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-       prefer: 'return=representation'
-    },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        prefer: 'return=representation',
+      },
     };
-    
+
     const body = [
-      { 
-        "op": "replace", 
-        "path": "/plan/billing_cycles/@sequence==1/pricing_scheme/fixed_price", 
-        "value": { "currency_code": "USD", "value": "50.00" } 
+      {
+        op: 'replace',
+        path: '/plan/billing_cycles/@sequence==1/pricing_scheme/fixed_price',
+        value: { currency_code: 'USD', value: '50.00' },
       },
-      { 
-        "op": "replace", 
-        "path": "/plan/billing_cycles/@sequence==2/pricing_scheme/tiers", 
-        "value": [
-          { "starting_quantity": "1", "ending_quantity": "1000", "amount": { "value": "500", "currency_code": "USD" } }, 
-          { "starting_quantity": "1001", "amount": { "value": "2000", "currency_code": "USD" } }
-        ] 
+      {
+        op: 'replace',
+        path: '/plan/billing_cycles/@sequence==2/pricing_scheme/tiers',
+        value: [
+          {
+            starting_quantity: '1',
+            ending_quantity: '1000',
+            amount: { value: '500', currency_code: 'USD' },
+          },
+          {
+            starting_quantity: '1001',
+            amount: { value: '2000', currency_code: 'USD' },
+          },
+        ],
       },
-      { 
-        "op": "replace", 
-        "path": "/plan/payment_preferences/auto_bill_outstanding", 
-        "value": true 
+      {
+        op: 'replace',
+        path: '/plan/payment_preferences/auto_bill_outstanding',
+        value: true,
       },
-      { 
-        "op": "replace", 
-        "path": "/plan/payment_preferences/payment_failure_threshold", 
-        "value": 1 
+      {
+        op: 'replace',
+        path: '/plan/payment_preferences/payment_failure_threshold',
+        value: 1,
       },
-      { 
-        "op": "replace", 
-        "path": "/plan/taxes/percentage", 
-        "value": "10" 
-      }
+      {
+        op: 'replace',
+        path: '/plan/taxes/percentage',
+        value: '10',
+      },
     ];
 
     try {
       const response = await lastValueFrom(
-        this.httpService.patch(paypalUrl, body,  requestConfig )
+        this.httpService.patch(paypalUrl, body, requestConfig),
       );
-            return response.data;
+      return response.data;
     } catch (error) {
       console.error('Error updating PayPal subscription:', error);
       throw error;
     }
   }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // async createSubscription(parameterId: number, userId: string) {
 //   // Check the user's current subscription status
 //   const user = await this.userRepo.findOne({ where: { id: userId } });
-  
+
 //   if (!user) {
 //     throw new BadRequestException('User not found');
 //   }

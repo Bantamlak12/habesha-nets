@@ -39,7 +39,7 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
           OAuth2Token,
         ],
         synchronize: true,
-        ssl: 
+        ssl:
           process.env.NODE_ENV === 'development'
             ? { rejectUnauthorized: false }
             : { rejectUnauthorized: true },
