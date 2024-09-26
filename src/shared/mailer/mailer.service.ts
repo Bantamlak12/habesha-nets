@@ -7,8 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { subscriptionconformationEmail } from 'src/shared/mailer/templates/subscription.template';
-import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
-import { subscriptioncancelEmail } from './templates/subscription.cancel.template';
+import { subscriptioncancelEmail } from './templates/subscription-cancel.template';
 
 @Injectable()
 export class CustomMailerService {
