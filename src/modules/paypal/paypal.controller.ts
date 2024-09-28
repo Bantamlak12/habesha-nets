@@ -399,4 +399,14 @@ export class PaypalController {
         .send('Error handling webhook event');
     }
   }
+
+  @Patch('subscription')
+  @UseGuards(JwtAuthGuard)
+  async updateSubscription(@Request() req: ExpressRequest) {
+    const userId = req.user?.['sub'];
+    const subscriptionId = (
+      await this.userRepo.findOne({ where: { id: userId } })
+    ).subscriptionId;
+    return await this.paypalService.updateSubscription(subscriptionId);
+  }
 }

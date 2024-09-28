@@ -1,13 +1,13 @@
 export function subscriptionCancelEmail(
-    companyName: string,
-    year: number,
-    userName: string,   
-    lastPaymentAmount: string, // Last payment value
-    cancellationDate: string,
-    status: string, // Date of cancellation
-    currency: string , // Default to USD if no currency provided
-  ) {
-    return `
+  companyName: string,
+  year: number,
+  userName: string,
+  lastPaymentAmount: string, // Last payment value
+  cancellationDate: string,
+  status: string, // Date of cancellation
+  currency: string, // Default to USD if no currency provided
+) {
+  return `
       <!DOCTYPE html>
       <html lang="en">
       <head>
@@ -89,5 +89,4 @@ export function subscriptionCancelEmail(
       </body>
       </html>
     `;
-  }
-
+}

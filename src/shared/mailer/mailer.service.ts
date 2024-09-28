@@ -7,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { subscriptionConfirmationEmail } from 'src/shared/mailer/templates/subscription.template';
-import { accountVerificationEmail } from 'src/shared/mailer/templates/account-verification.template';
 import { subscriptionCancelEmail } from './templates/subscription-cancel.template';
 import { subscriptionPayemntConformationEmail } from './templates/subscription-payemnt_conformation';
 

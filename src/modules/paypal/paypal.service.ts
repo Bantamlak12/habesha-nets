@@ -371,9 +371,6 @@ export class PaypalService {
   }
 
   async createSubscription(parameterId: number, userId: string) {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-
-    // if(user.subscriptionStatus === 'subscribed')
     let subscriptionPlan: string | null;
 
     let subscriptionId: string | null;
@@ -612,4 +609,3 @@ export class PaypalService {
     }
   }
 }
-
