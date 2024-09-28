@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { AxiosResponse } from 'axios';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, lastValueFrom, map, of } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OAuth2Token } from './entities/token.entity';
 import { Repository } from 'typeorm';
@@ -156,14 +156,119 @@ export class PaypalService {
     }
   }
 
+  // List Products
+  async fetchProducts() {
+    const paypalApiUrlListProduct = `${this.PAYPAL_API}/v1/catalogs/products?page_size=2&page=1&total_required=true`;
+    const accessToken = await this.getToken();
+
+    return this.httpService.get(paypalApiUrlListProduct, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    }).pipe(
+      map(response => response.data),
+      catchError(error => {
+        console.error('Error fetching products', error);
+        return of({ error: 'Failed to fetch products' });
+      }),
+    );
+  }
+
+  //Update PRoduct
+  async updateProduct(productId: string, updateData: { description?: string; category?: string }): Promise<any> {
+    const url = `${this.PAYPAL_API}/v1/catalogs/products/${productId}`;
+    
+    const requestBody = [];
+
+    // Conditionally add operations to the request body
+    if (updateData.description) {
+      requestBody.push({
+        op: 'replace',
+        path: '/description',
+        value: updateData.description,
+      });
+    }
+
+    if (updateData.category) {
+      requestBody.push({
+        op: 'replace',
+        path: '/category',
+        value: updateData.category,
+      });
+    }
+
+    if (requestBody.length === 0) {
+      throw new Error('No fields to update.');
+    }
+
+    const accessToken = await this.getToken();
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.patch(url, requestBody, requestConfig),
+      );
+
+      return response.data; // Return the updated product data
+    } catch (error) {
+      console.error('PayPal API Error:', error.response?.data || error.message);
+      throw new Error(
+        `Failed to update PayPal product: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
+
+  //Detail Description Product 
+  async getProduct(productId: string): Promise<any> {
+    const url = `${this.PAYPAL_API}/v1/catalogs/products/${productId}`;
+    
+    const accessToken = await this.getToken();
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Prefer: 'return=representation',
+      },
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, requestConfig).pipe(
+          map(response => response.data),
+          catchError(error => {
+            console.error('Error fetching product:', error);
+            return of({ error: 'Failed to fetch product' });
+          }),
+        ),
+      );
+
+      return response; // Return the product data
+    } catch (error) {
+      console.error('PayPal API Error:', error.response?.data || error.message);
+      throw new Error(
+        `Failed to retrieve PayPal product: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
+  
+
   //Create Billing Plan For subscription
   async createBillingPlan(
     paypalRequestId: string,
-    name: string,
+    name: string, // weekly
     description: string,
-    amount: string,
-    interval_count: number,
-    interval_unit: string,
+    amount: string, //23423432
+    interval_count: number, //1
+    interval_unit: string, //week
   ): Promise<any> {
     const paypalUrlBillingPlan = `${this.PAYPAL_API}/v1/billing/plans`;
 
@@ -291,8 +396,6 @@ export class PaypalService {
     } else {
       throw new BadRequestException('incorrect URL Request');
     }
-
-    const user = await this.userRepo.findOne({ where: { id: userId } });
 
     const requestBody = {
       plan_id: subscriptionId,

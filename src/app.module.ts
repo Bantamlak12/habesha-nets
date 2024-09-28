@@ -41,7 +41,7 @@ import { ResetTokens } from './modules/auth/entities/password-reset-token.entity
           ResetTokens,
         ],
         synchronize: true,
-        ssl:
+        ssl: 
           process.env.NODE_ENV === 'development'
             ? { rejectUnauthorized: false }
             : { rejectUnauthorized: true },

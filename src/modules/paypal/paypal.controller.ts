@@ -9,7 +9,8 @@ import {
   Response,
   UseGuards,
   Req,
-  Patch
+  Patch,
+  Get
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -57,6 +58,22 @@ export class PaypalController {
   async createProduct() {
     const result = await this.paypalService.createProduct();
     return result;
+  }
+
+  //List Product 
+  @Get('list-products')
+  @UseGuards(JwtAuthGuard)
+  async getProducts() {
+    return this.paypalService.fetchProducts();
+  }
+
+  //Update Product
+  @Patch('products/:id')
+  async updateProduct(
+    @Param('id') id: string,
+    @Body() updateData: { description?: string; category?: string }, // Accept object with optional fields
+  ) {
+    return this.paypalService.updateProduct(id, updateData);
   }
 
   //Create Plan
@@ -309,13 +326,13 @@ export class PaypalController {
 
 }
 
-@Patch('subscription')
-@UseGuards(JwtAuthGuard)
-async updateSubscription(
-  @Request() req: ExpressRequest
-) {
-  const userId = req.user?.['sub'];
-  const subscriptionId =( await this.userRepo.findOne({where: {id: userId}})).subscriptionId;
-  return await this.paypalService.updateSubscription(subscriptionId);
-}
-}
+// @Patch('subscription')
+// @UseGuards(JwtAuthGuard)
+// async updateSubscription(
+//   @Request() req: ExpressRequest
+// ) {
+//   const userId = req.user?.['sub'];
+//   const subscriptionId =( await this.userRepo.findOne({where: {id: userId}})).subscriptionId;
+//   return await this.paypalService.updateSubscription(subscriptionId);
+// }
+// }
