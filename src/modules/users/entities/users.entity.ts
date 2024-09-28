@@ -1,5 +1,6 @@
 import { ResetTokens } from 'src/modules/auth/entities/password-reset-token.entity';
 import { RefreshToken } from 'src/modules/auth/entities/refresh-token.entity';
+import { JobPost } from 'src/modules/post/entities/create-post.entity';
 import {
   Column,
   CreateDateColumn,
@@ -160,4 +161,7 @@ export abstract class User {
 
   @OneToMany(() => ResetTokens, (resetTokens) => resetTokens.user)
   resetTokens: ResetTokens[];
+
+  @OneToMany(() => JobPost, (jobPost) => jobPost.postedBy)
+  jobPosts: JobPost[];
 }

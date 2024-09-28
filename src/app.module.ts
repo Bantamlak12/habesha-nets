@@ -15,6 +15,11 @@ import { Product } from './modules/paypal/entities/product.entity';
 import { OAuth2Token } from './modules/paypal/entities/token.entity';
 import { Subscription } from './modules/paypal/entities/subscription.entity';
 import { ResetTokens } from './modules/auth/entities/password-reset-token.entity';
+import { PostModule } from './modules/post/post.module';
+import { JobPost } from './modules/post/entities/create-post.entity';
+import { ModulesModule } from './modules/modules.module';
+import { ServicesModule } from './modules/services/services.module';
+import { CategoryModule } from './modules/category/category.module';
 
 @Module({
   imports: [
@@ -39,6 +44,7 @@ import { ResetTokens } from './modules/auth/entities/password-reset-token.entity
           OAuth2Token,
           Subscription,
           ResetTokens,
+          JobPost,
         ],
         synchronize: true,
         ssl:
@@ -52,6 +58,10 @@ import { ResetTokens } from './modules/auth/entities/password-reset-token.entity
     PaypalModule,
     SmsModule,
     UploadModule,
+    PostModule,
+    ModulesModule,
+    ServicesModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
