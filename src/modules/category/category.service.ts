@@ -44,15 +44,12 @@ export class CategoryService {
   async update(
     id: string,
     updateCategoryDto: UpdateCategoryDto,
-  ): Promise<Category> {
-    const category = await this.categoryRepository.preload({
-      id,
+  ): Promise<number> {
+    const category = await this.categoryRepository.update(id, {
       ...updateCategoryDto,
     });
-    if (!category) {
-      throw new NotFoundException(`Category with ID ${id} not found`);
-    }
-    return await this.categoryRepository.save(category);
+
+    return category.affected;
   }
 
   async remove(id: string): Promise<void> {
@@ -62,8 +59,13 @@ export class CategoryService {
 
   // Service operations
 
-  async findAllService(): Promise<Service[]> {
-    return await this.serviceRepository.find({ relations: ['category'] });
+  async findAllService(name: string): Promise<Service[]> {
+    const id = await this.categoryRepository.findOne({ where: { name } });
+
+    return await this.serviceRepository.find({
+      where: { category: id },
+      relations: ['category'],
+    });
   }
 
   async findOneService(id: string): Promise<Service> {
@@ -78,15 +80,15 @@ export class CategoryService {
   }
 
   async createService(
-    categoryId: string,
+    name: string,
     createServiceDto: CreateServiceDto,
   ): Promise<Service> {
     const category = await this.categoryRepository.findOne({
-      where: { id: categoryId },
+      where: { name: name },
     });
 
     if (!category) {
-      throw new NotFoundException(`Category with ID ${categoryId} not found`);
+      throw new NotFoundException(`Category with ID ${name} not found`);
     }
 
     const service = this.serviceRepository.create({

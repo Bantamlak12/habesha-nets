@@ -7,7 +7,10 @@ import {
   Delete,
   UseGuards,
   Patch,
+  Response,
+  HttpStatus,
 } from '@nestjs/common';
+import { Response as ExpressResponse } from 'express';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { CreateServiceDto, UpdateServiceDto } from './dto/service.dto';
@@ -19,19 +22,41 @@ export class CategoryController {
 
   // Category Endpoints
   @Get()
-  async findAll() {
-    return this.categoryService.findAll();
+  async findAll(@Response() res: ExpressResponse) {
+    const categories = await this.categoryService.findAll();
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      results: categories.length,
+      statusCode: 200,
+      data: categories,
+    });
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.categoryService.findOne(id);
+  async findOne(@Param('id') id: string, @Response() res: ExpressResponse) {
+    const category = await this.categoryService.findOne(id);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      data: category,
+    });
   }
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async create(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoryService.create(createCategoryDto);
+  async create(
+    @Body() createCategoryDto: CreateCategoryDto,
+    @Response() res: ExpressResponse,
+  ) {
+    await this.categoryService.create(createCategoryDto);
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'Category created successfully',
+    });
   }
 
   @Patch(':id')
@@ -39,37 +64,76 @@ export class CategoryController {
   async update(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
+    @Response() res: ExpressResponse,
   ) {
-    return this.categoryService.update(id, updateCategoryDto);
+    const affectedRow = await this.categoryService.update(
+      id,
+      updateCategoryDto,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      affectedRow,
+    });
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.categoryService.remove(id);
+  async remove(@Param('id') id: string, @Response() res: ExpressResponse) {
+    const deletedCategory = await this.categoryService.remove(id);
+
+    return res.status(HttpStatus.NO_CONTENT).json({
+      status: 'success',
+      statusCode: 204,
+      data: deletedCategory,
+    });
   }
 
   // Service Endpoints (Under Categories)
-  @Get(':categoryId/services')
-  async findAllServices(@Param('categoryId') categoryId: string) {
-    const category = await this.categoryService.findOne(categoryId);
-    return category.services;
-  }
-
-  @Get(':categoryId/services/:serviceId')
-  async findOneService(
-    @Param('categoryId') categoryId: string,
-    @Param('serviceId') serviceId: string,
+  @Get(':name/services')
+  async findAllServices(
+    @Param('name') name: string,
+    @Response() res: ExpressResponse,
   ) {
-    return this.categoryService.findOneService(serviceId);
+    const services = await this.categoryService.findAllService(name);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      results: services.length,
+      statusCode: 200,
+      data: services,
+    });
   }
 
-  @Post(':categoryId/services')
+  @Get(':name/services/:serviceId')
+  async findOneService(
+    @Param('categoryId') name: string,
+    @Param('serviceId') serviceId: string,
+    @Response() res: ExpressResponse,
+  ) {
+    const service = await this.categoryService.findOneService(serviceId);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      data: service,
+    });
+  }
+
+  @Post(':name/services')
   @UseGuards(JwtAuthGuard)
   async createService(
-    @Param('categoryId') categoryId: string,
+    @Param('name') name: string,
     @Body() createServiceDto: CreateServiceDto,
+    @Response() res: ExpressResponse,
   ) {
-    return this.categoryService.createService(categoryId, createServiceDto);
+    await this.categoryService.createService(name, createServiceDto);
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'Service created successfully',
+    });
   }
 
   @Patch(':categoryId/services/:serviceId')
