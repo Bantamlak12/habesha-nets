@@ -7,6 +7,7 @@ import {
   IsString,
 } from 'class-validator';
 import { LocationDto } from './location.dto';
+import { SalaryDto } from './salary.dto';
 
 export class JobPostDto {
   @IsString()
@@ -25,10 +26,7 @@ export class JobPostDto {
   location: LocationDto;
 
   @IsNumber()
-  salaryMin: number;
-
-  @IsNumber()
-  salaryMax: number;
+  salary: SalaryDto;
 
   @IsOptional()
   @IsArray()

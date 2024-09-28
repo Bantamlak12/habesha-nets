@@ -15,11 +15,11 @@ import { Product } from './modules/paypal/entities/product.entity';
 import { OAuth2Token } from './modules/paypal/entities/token.entity';
 import { Subscription } from './modules/paypal/entities/subscription.entity';
 import { ResetTokens } from './modules/auth/entities/password-reset-token.entity';
-import { JobPost } from './modules/users/entities/create-post.entity';
-import { Controller } from './src/modules/users/.controller';
-import { ModulesModule } from './post/modules/modules.module';
-import { PostModule } from './post/post.module';
 import { PostModule } from './modules/post/post.module';
+import { JobPost } from './modules/post/entities/create-post.entity';
+import { ModulesModule } from './modules/modules.module';
+import { ServicesModule } from './modules/services/services.module';
+import { CategoryModule } from './modules/category/category.module';
 
 @Module({
   imports: [
@@ -58,10 +58,12 @@ import { PostModule } from './modules/post/post.module';
     PaypalModule,
     SmsModule,
     UploadModule,
-    ModulesModule,
     PostModule,
+    ModulesModule,
+    ServicesModule,
+    CategoryModule,
   ],
-  controllers: [AppController, Controller],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

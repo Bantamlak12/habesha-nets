@@ -1,3 +1,4 @@
+import { User } from 'src/modules/users/entities/users.entity';
 import {
   Entity,
   Column,
@@ -6,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
 } from 'typeorm';
-import { User } from './users.entity';
 
 @Entity('job-posts')
 export class JobPost {
@@ -32,11 +32,11 @@ export class JobPost {
     remote?: boolean;
   };
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  salaryMin: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  salaryMax: number;
+  @Column({ type: 'jsonb' })
+  salary: {
+    min: number;
+    max: number;
+  };
 
   @Column({ type: 'jsonb' })
   requiredSkills: string[];
