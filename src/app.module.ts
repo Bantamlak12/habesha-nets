@@ -17,8 +17,6 @@ import { Subscription } from './modules/paypal/entities/subscription.entity';
 import { ResetTokens } from './modules/auth/entities/password-reset-token.entity';
 import { PostModule } from './modules/post/post.module';
 import { JobPost } from './modules/post/entities/create-post.entity';
-import { ModulesModule } from './modules/modules.module';
-import { ServicesModule } from './modules/services/services.module';
 import { CategoryModule } from './modules/category/category.module';
 
 @Module({
@@ -59,8 +57,6 @@ import { CategoryModule } from './modules/category/category.module';
     SmsModule,
     UploadModule,
     PostModule,
-    ModulesModule,
-    ServicesModule,
     CategoryModule,
   ],
   controllers: [AppController],

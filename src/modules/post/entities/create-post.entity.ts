@@ -10,7 +10,7 @@ import {
 
 @Entity('job-posts')
 export class JobPost {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
@@ -38,7 +38,7 @@ export class JobPost {
     max: number;
   };
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'jsonb', nullable: true })
   requiredSkills: string[];
 
   @Column()
