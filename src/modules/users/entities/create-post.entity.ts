@@ -50,7 +50,7 @@ export class JobPost {
   @Column()
   applicationDeadline: Date;
 
-  @Column()
+  @Column({ type: 'enum', enum: ['active', 'closed'], default: 'active' })
   status: 'active' | 'closed';
 
   @ManyToOne(() => User, (user) => user.jobPosts, { eager: true })
