@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from '../category/entities/category.entity';
-import { CreateCategoryDto, UpdateCategoryDto } from '../category/dto/category.dto';
+import {
+  CreateCategoryDto,
+  UpdateCategoryDto,
+} from '../category/dto/category.dto';
 import { Service } from './entities/service.entity';
 import { CreateServiceDto, UpdateServiceDto } from './dto/service.dto';
 
@@ -12,7 +15,7 @@ export class CategoryService {
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
 
-    @InjectRepository(Service) 
+    @InjectRepository(Service)
     private serviceRepository: Repository<Service>,
   ) {}
 
@@ -23,7 +26,10 @@ export class CategoryService {
   }
 
   async findOne(id: string): Promise<Category> {
-    const category = await this.categoryRepository.findOne({ where: { id }, relations: ['services'] });
+    const category = await this.categoryRepository.findOne({
+      where: { id },
+      relations: ['services'],
+    });
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
@@ -35,7 +41,10 @@ export class CategoryService {
     return await this.categoryRepository.save(category);
   }
 
-  async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
+  async update(
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+  ): Promise<Category> {
     const category = await this.categoryRepository.preload({
       id,
       ...updateCategoryDto,
@@ -58,22 +67,28 @@ export class CategoryService {
   }
 
   async findOneService(id: string): Promise<Service> {
-    const service = await this.serviceRepository.findOne({ where: { id }, relations: ['category'] });
+    const service = await this.serviceRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    });
     if (!service) {
       throw new NotFoundException(`Service with ID ${id} not found`);
     }
     return service;
   }
 
-  async createService(categoryId: string, createServiceDto: CreateServiceDto): Promise<Service> {
-    
-    const category = await this.categoryRepository.findOne({ where: { id: categoryId } });
+  async createService(
+    categoryId: string,
+    createServiceDto: CreateServiceDto,
+  ): Promise<Service> {
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId },
+    });
 
     if (!category) {
       throw new NotFoundException(`Category with ID ${categoryId} not found`);
     }
-  
-    // Create a new service associated with the category
+
     const service = this.serviceRepository.create({
       ...createServiceDto,
       category,
@@ -81,29 +96,35 @@ export class CategoryService {
     return await this.serviceRepository.save(service);
   }
 
-  async updateService(id: string, updateServiceDto: UpdateServiceDto): Promise<Service> {
+  async updateService(
+    id: string,
+    updateServiceDto: UpdateServiceDto,
+  ): Promise<Service> {
     const service = await this.serviceRepository.findOne({
       where: { id },
       relations: ['category'],
     });
-  
+
     if (!service) {
       throw new NotFoundException(`Service with ID ${id} not found`);
     }
-  
+
     // Only update fields present in updateServiceDto.  Avoid overwriting existing data.
     Object.assign(service, updateServiceDto);
-  
-  
+
     // Handle category update separately.  Only update if categoryId is provided.
     if (updateServiceDto.categoryId) {
-      const category = await this.categoryRepository.findOneBy({id: updateServiceDto.categoryId});
+      const category = await this.categoryRepository.findOneBy({
+        id: updateServiceDto.categoryId,
+      });
       if (!category) {
-        throw new NotFoundException(`Category with ID ${updateServiceDto.categoryId} not found`);
+        throw new NotFoundException(
+          `Category with ID ${updateServiceDto.categoryId} not found`,
+        );
       }
       service.category = category;
     }
-  
+
     return this.serviceRepository.save(service);
   }
 

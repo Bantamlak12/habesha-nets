@@ -12,7 +12,7 @@ export class UpdateServiceDto {
   @IsOptional()
   @IsNotEmpty()
   name?: string;
-  
+
   @IsOptional()
   @IsNotEmpty()
   description?: string;

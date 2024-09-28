@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  UseGuards,
+  Patch,
+} from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 import { CreateServiceDto, UpdateServiceDto } from './dto/service.dto';
@@ -27,7 +36,10 @@ export class CategoryController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  async update(@Param('id') id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() updateCategoryDto: UpdateCategoryDto,
+  ) {
     return this.categoryService.update(id, updateCategoryDto);
   }
 
@@ -40,7 +52,7 @@ export class CategoryController {
   @Get(':categoryId/services')
   async findAllServices(@Param('categoryId') categoryId: string) {
     const category = await this.categoryService.findOne(categoryId);
-    return category.services; // Return services belonging to the category
+    return category.services;
   }
 
   @Get(':categoryId/services/:serviceId')
@@ -57,8 +69,6 @@ export class CategoryController {
     @Param('categoryId') categoryId: string,
     @Body() createServiceDto: CreateServiceDto,
   ) {
-    // Set the category ID in the DTO
-
     return this.categoryService.createService(categoryId, createServiceDto);
   }
 
@@ -69,7 +79,7 @@ export class CategoryController {
     @Param('serviceId') serviceId: string,
     @Body() updateServiceDto: UpdateServiceDto,
   ) {
-    return this.categoryService.updateService( serviceId, updateServiceDto); 
+    return this.categoryService.updateService(serviceId, updateServiceDto);
   }
 
   @Delete(':categoryId/services/:serviceId')
