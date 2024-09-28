@@ -378,6 +378,10 @@ export class PaypalService {
       (billing) => billing.id,
     );
 
+    let user = await this.userRepo.findOne({
+      where: { id: userId }
+    });
+
     if (parameterId === 1) {
       subscriptionId = subscriptionIds[0];
       subscriptionPlan = 'monthly';
