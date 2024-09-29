@@ -161,25 +161,30 @@ export class PaypalService {
     const paypalApiUrlListProduct = `${this.PAYPAL_API}/v1/catalogs/products?page_size=2&page=1&total_required=true`;
     const accessToken = await this.getToken();
 
-    return this.httpService.get(paypalApiUrlListProduct, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-    }).pipe(
-      map(response => response.data),
-      catchError(error => {
-        console.error('Error fetching products', error);
-        return of({ error: 'Failed to fetch products' });
-      }),
-    );
+    return this.httpService
+      .get(paypalApiUrlListProduct, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      })
+      .pipe(
+        map((response) => response.data),
+        catchError((error) => {
+          console.error('Error fetching products', error);
+          return of({ error: 'Failed to fetch products' });
+        }),
+      );
   }
 
   //Update PRoduct
-  async updateProduct(productId: string, updateData: { description?: string; category?: string }): Promise<any> {
+  async updateProduct(
+    productId: string,
+    updateData: { description?: string; category?: string },
+  ): Promise<any> {
     const url = `${this.PAYPAL_API}/v1/catalogs/products/${productId}`;
-    
+
     const requestBody = [];
 
     // Conditionally add operations to the request body
@@ -226,10 +231,10 @@ export class PaypalService {
     }
   }
 
-  //Detail Description Product 
+  //Detail Description Product
   async getProduct(productId: string): Promise<any> {
     const url = `${this.PAYPAL_API}/v1/catalogs/products/${productId}`;
-    
+
     const accessToken = await this.getToken();
     const requestConfig = {
       headers: {
@@ -243,8 +248,8 @@ export class PaypalService {
     try {
       const response = await firstValueFrom(
         this.httpService.get(url, requestConfig).pipe(
-          map(response => response.data),
-          catchError(error => {
+          map((response) => response.data),
+          catchError((error) => {
             console.error('Error fetching product:', error);
             return of({ error: 'Failed to fetch product' });
           }),
@@ -259,7 +264,6 @@ export class PaypalService {
       );
     }
   }
-  
 
   //Create Billing Plan For subscription
   async createBillingPlan(
@@ -393,6 +397,8 @@ export class PaypalService {
     } else {
       throw new BadRequestException('incorrect URL Request');
     }
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
 
     const requestBody = {
       plan_id: subscriptionId,
