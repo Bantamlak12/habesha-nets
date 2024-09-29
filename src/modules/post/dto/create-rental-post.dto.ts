@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsString,
   IsOptional,
@@ -17,15 +18,22 @@ export class CreatePropertyOwnersDto {
   rentalType: string;
 
   @IsNumber({ maxDecimalPlaces: 2 })
+  @Transform(({ value }) => parseFloat(value))
   price: number;
 
   @IsObject()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
   location: {
     city?: string;
     country?: string;
   };
 
   @IsObject()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? JSON.parse(value) : value,
+  )
   availabilityDate: {
     from: Date;
     to: Date;
@@ -53,11 +61,11 @@ export class CreatePropertyOwnersDto {
   size?: string;
 
   @IsOptional()
-  @IsNumber()
+  @Transform(({ value }) => parseInt(value))
   capacity?: number;
 
   @IsOptional()
-  @IsNumber()
+  @Transform(({ value }) => parseInt(value))
   insurance?: number;
 
   @IsOptional()
