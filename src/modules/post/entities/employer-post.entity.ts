@@ -16,7 +16,7 @@ export class JobPost {
   @Column()
   title: string;
 
-  @Column()
+  @Column('text')
   description: string;
 
   @Column()

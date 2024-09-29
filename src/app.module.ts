@@ -18,6 +18,7 @@ import { ResetTokens } from './modules/auth/entities/password-reset-token.entity
 import { PostModule } from './modules/post/post.module';
 import { JobPost } from './modules/post/entities/employer-post.entity';
 import { CategoryModule } from './modules/category/category.module';
+import { RentalPost } from './modules/post/entities/rental-post.entity';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CategoryModule } from './modules/category/category.module';
           Subscription,
           ResetTokens,
           JobPost,
+          RentalPost,
         ],
         synchronize: true,
         ssl:
