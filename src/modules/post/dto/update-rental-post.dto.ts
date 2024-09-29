@@ -6,7 +6,7 @@ import {
   IsObject,
 } from 'class-validator';
 
-export class CreatePostDto {
+export class UpdatePropertyOwnersDto {
   @IsOptional()
   @IsString()
   title: string;
