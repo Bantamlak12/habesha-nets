@@ -15,10 +15,10 @@ import {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from 'express';
-import { CreatePost } from './dto/create-post.dto';
+import { CreatePost } from './dto/create-job-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PostService } from './post.service';
-import { UpdatePost } from './dto/update-post.dto';
+import { UpdatePost } from './dto/update-job-post.dto';
 
 @Controller('posts')
 export class PostController {
