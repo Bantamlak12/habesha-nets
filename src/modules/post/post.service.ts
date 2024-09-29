@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JobPost } from './entities/create-post.entity';
+import { JobPost } from './entities/employer-post.entity';
 
 @Injectable()
 export class PostService {

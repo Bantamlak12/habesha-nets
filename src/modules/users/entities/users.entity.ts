@@ -1,6 +1,6 @@
 import { ResetTokens } from 'src/modules/auth/entities/password-reset-token.entity';
 import { RefreshToken } from 'src/modules/auth/entities/refresh-token.entity';
-import { JobPost } from 'src/modules/post/entities/create-post.entity';
+import { JobPost } from 'src/modules/post/entities/employer-post.entity';
 import {
   Column,
   CreateDateColumn,

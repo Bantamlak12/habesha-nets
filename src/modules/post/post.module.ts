@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PostController } from './post.controller';
 import { PostService } from './post.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JobPost } from './entities/create-post.entity';
+import { JobPost } from './entities/employer-post.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
