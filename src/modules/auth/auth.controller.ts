@@ -392,7 +392,7 @@ export class AuthController {
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
-    const userId = '45498567';
+    const userId = identifier.split(':')[1];
 
     let token: string;
     let otpRecordId: string;
