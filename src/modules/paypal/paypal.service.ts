@@ -382,8 +382,8 @@ export class PaypalService {
       (billing) => billing.id,
     );
 
-    let user = await this.userRepo.findOne({
-      where: { id: userId }
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
     });
 
     if (parameterId === 1) {
@@ -401,8 +401,6 @@ export class PaypalService {
     } else {
       throw new BadRequestException('incorrect URL Request');
     }
-
-    const user = await this.userRepo.findOne({ where: { id: userId } });
 
     const requestBody = {
       plan_id: subscriptionId,

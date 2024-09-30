@@ -51,10 +51,10 @@ import { Service } from './modules/category/entities/service.entity';
           Service,
         ],
         synchronize: true,
-        ssl: false,
-        process.env.NODE_ENV === 'development'
-          ? { rejectUnauthorized: false }
-          : { rejectUnauthorized: true },
+        ssl:
+          process.env.NODE_ENV === 'development'
+            ? { rejectUnauthorized: false }
+            : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
