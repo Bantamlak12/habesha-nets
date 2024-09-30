@@ -149,4 +149,12 @@ export class PostController {
       message: 'Post created successfully',
     });
   }
+
+  async rentalGetPost() {}
+
+  async rentalGetPosts() {}
+
+  async rentalUpdatePost() {}
+
+  async rentalDeletePost() {}
 }
