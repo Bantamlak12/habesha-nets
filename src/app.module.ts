@@ -19,6 +19,8 @@ import { PostModule } from './modules/post/post.module';
 import { JobPost } from './modules/post/entities/employer-post.entity';
 import { CategoryModule } from './modules/category/category.module';
 import { RentalPost } from './modules/post/entities/rental-post.entity';
+import { Category } from './modules/category/entities/category.entity';
+import { Service } from './modules/category/entities/service.entity';
 
 @Module({
   imports: [
@@ -45,12 +47,14 @@ import { RentalPost } from './modules/post/entities/rental-post.entity';
           ResetTokens,
           JobPost,
           RentalPost,
+          Category,
+          Service,
         ],
         synchronize: true,
-        ssl:
-          process.env.NODE_ENV === 'development'
-            ? { rejectUnauthorized: false }
-            : { rejectUnauthorized: true },
+        ssl: false,
+        process.env.NODE_ENV === 'development'
+          ? { rejectUnauthorized: false }
+          : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
