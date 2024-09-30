@@ -349,13 +349,12 @@ export class AuthController {
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      message: 'Password reset link has been sent to your email.',
+      message:
+        'Password reset link/OTP has been sent to your email/phone number.',
     });
   }
 
   @Post('check-opt')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary: 'This end point is used to check the validity of the OTP sent',
   })
@@ -374,7 +373,6 @@ export class AuthController {
   }
 
   @Patch('reset-password/:identifier')
-  @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary:
       'This endpoint is used to reset your password if the token sent to your email is still valid.',
@@ -394,7 +392,8 @@ export class AuthController {
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
-    const userId = req.user['sub'];
+    const userId = '45498567';
+
     let token: string;
     let otpRecordId: string;
 

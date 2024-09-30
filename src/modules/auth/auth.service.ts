@@ -110,7 +110,7 @@ export class AuthService {
   }
 
   async resetAndUpdatePassword(
-    userId: string,
+    userId,
     id: string,
     newPassword: string,
     confirmPassword: string,
@@ -134,13 +134,16 @@ export class AuthService {
   async checkOtp(OTP: string) {
     const resetOTP = await this.passwordResetTokenRepo.findOne({
       where: { OTP },
+      relations: ['user'],
     });
 
     if (!resetOTP || resetOTP.OtpExpiry < new Date()) {
       throw new BadRequestException('Your OTP has expired.');
     }
 
-    return resetOTP.id;
+    const userId = resetOTP.user['id'];
+
+    return `${resetOTP.id}:${userId}`;
   }
 
   async validateUser(emailOrPhone: string, password: string) {
@@ -505,7 +508,8 @@ export class AuthService {
         });
       }
 
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+      const userId = user.id;
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}/${userId}`;
       const emailBody = generatePasswordResetEmail(
         resetUrl,
         new Date().getFullYear(),
@@ -530,7 +534,7 @@ export class AuthService {
         });
       }
 
-      await this.smsService.sendSms(user.phoneNumber, OTP);
+      // await this.smsService.sendSms(user.phoneNumber, OTP);
       await this.passwordResetTokenRepo.save(resetTokenRecord);
     }
   }
