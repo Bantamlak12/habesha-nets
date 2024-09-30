@@ -18,6 +18,8 @@ import { ResetTokens } from './modules/auth/entities/password-reset-token.entity
 import { PostModule } from './modules/post/post.module';
 import { JobPost } from './modules/post/entities/create-post.entity';
 import { CategoryModule } from './modules/category/category.module';
+import { Category } from './modules/category/entities/category.entity';
+import { Service } from './modules/category/entities/service.entity';
 
 @Module({
   imports: [
@@ -43,12 +45,14 @@ import { CategoryModule } from './modules/category/category.module';
           Subscription,
           ResetTokens,
           JobPost,
+          Category,
+          Service,
         ],
         synchronize: true,
-        ssl:
-          process.env.NODE_ENV === 'development'
-            ? { rejectUnauthorized: false }
-            : { rejectUnauthorized: true },
+        ssl: false,
+        // process.env.NODE_ENV === 'development'
+        //   ? { rejectUnauthorized: false }
+        //   : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
