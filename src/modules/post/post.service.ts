@@ -37,14 +37,41 @@ export class PostService {
     return post;
   }
 
-  async getAllJobPost() {
-    const posts = await this.jobPostRepo.find({});
-    return posts;
+  async getAllJobPost(userId: string, page: number, limit: number) {
+    const filteringWord = 'Entertainment';
+    const query = this.jobPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('user.id = :userId', { userId })
+      .orderBy('JobPost.createdAt', 'DESC');
+
+    if (filteringWord) {
+      query.andWhere('JobPost.category = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
-  async getAllRentalPost() {
-    const posts = await this.rentalPostRepo.find({});
-    return posts;
+  async getAllRentalPost(userId: string, page: number, limit: number) {
+    const [posts, total] = await this.rentalPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('user.id = :userId', { userId })
+      .orderBy('JobPost.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
   async employerUpdatePost(body: any, id: string) {

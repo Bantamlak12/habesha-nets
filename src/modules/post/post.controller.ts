@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   Response,
   UploadedFiles,
@@ -55,23 +56,30 @@ export class PostController {
   ) {
     const post = await this.postService.getPost(id);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      statusCode: 201,
+      statusCode: 200,
       data: post,
     });
   }
 
   @Get('job-post')
   @UseGuards(JwtAuthGuard)
-  async EmployerGetAllPost(@Response() res: ExpressResponse) {
-    const post = await this.postService.getAllJobPost();
+  async EmployerGetAllPost(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+    const post = await this.postService.getAllJobPost(userId, page, limit);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      Results: post.length,
-      statusCode: 201,
-      data: post,
+      Results: post.posts.length,
+      statusCode: 200,
+      totalPages: post.totalPages,
+      data: post.posts,
     });
   }
 
@@ -84,9 +92,9 @@ export class PostController {
   ) {
     const affectedRow = await this.postService.employerUpdatePost(body, id);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      statusCode: 201,
+      statusCode: 200,
       affectedRow,
     });
   }
@@ -96,9 +104,9 @@ export class PostController {
   async deletePost(@Param('id') id: string, @Response() res: ExpressResponse) {
     const affectedRow = await this.postService.deleteJobPost(id);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.NO_CONTENT).json({
       status: 'success',
-      statusCode: 201,
+      statusCode: 204,
       affectedRow,
     });
   }
@@ -157,14 +165,21 @@ export class PostController {
 
   @Get('rental-posts')
   @UseGuards(JwtAuthGuard)
-  async rentalGetAllPosts(@Response() res: ExpressResponse) {
-    const post = await this.postService.getAllRentalPost();
+  async rentalGetAllPosts(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+    const post = await this.postService.getAllRentalPost(userId, page, limit);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      Results: post.length,
-      statusCode: 201,
-      data: post,
+      Results: post.posts.length,
+      statusCode: 200,
+      totalPages: post.totalPages,
+      data: post.posts,
     });
   }
 
