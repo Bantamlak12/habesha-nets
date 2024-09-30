@@ -18,7 +18,10 @@ export class CreatePropertyOwnersDto {
   rentalType: string;
 
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Transform(({ value }) => parseFloat(value))
+  @Transform(({ value }) => {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? null : parsed;
+  })
   price: number;
 
   @IsObject()
@@ -61,11 +64,17 @@ export class CreatePropertyOwnersDto {
   size?: string;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => {
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? null : parsed;
+  })
   capacity?: number;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => {
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? null : parsed;
+  })
   insurance?: number;
 
   @IsOptional()

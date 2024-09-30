@@ -36,7 +36,8 @@ export class PostController {
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
-    await this.postService.EmployerCreatePost(body);
+    const id = req.user['sub'];
+    await this.postService.EmployerCreatePost(id, body);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -102,7 +103,7 @@ export class PostController {
   }
 
   @Post('rental-post')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'propertyImages', maxCount: 5 }]),
   )
@@ -139,8 +140,8 @@ export class PostController {
       );
     }
 
-    console.log(body);
-    console.log(propertyImages);
+    const id = req.user['sub'];
+    await this.postService.createPropertyOwnersPost(id, body, propertyImages);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
