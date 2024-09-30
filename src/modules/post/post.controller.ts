@@ -66,13 +66,19 @@ export class PostController {
   @Get('job-post')
   @UseGuards(JwtAuthGuard)
   async EmployerGetAllPost(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('category') category?: string,
   ) {
     const userId = req.user['sub'];
-    const post = await this.postService.getAllJobPost(userId, page, limit);
+    const post = await this.postService.getAllJobPost(
+      userId,
+      page,
+      limit,
+      category,
+    );
 
     return res.status(HttpStatus.OK).json({
       status: 'success',

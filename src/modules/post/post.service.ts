@@ -37,8 +37,12 @@ export class PostService {
     return post;
   }
 
-  async getAllJobPost(userId: string, page: number, limit: number) {
-    const filteringWord = 'Entertainment';
+  async getAllJobPost(
+    userId: string,
+    page: number,
+    limit: number,
+    category?: string,
+  ) {
     const query = this.jobPostRepo
       .createQueryBuilder('JobPost')
       .leftJoin('JobPost.postedBy', 'user')
@@ -46,7 +50,7 @@ export class PostService {
       .where('user.id = :userId', { userId })
       .orderBy('JobPost.createdAt', 'DESC');
 
-    if (filteringWord) {
+    if (category) {
       query.andWhere('JobPost.category = :category', { category });
     }
 
