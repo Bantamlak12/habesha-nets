@@ -22,6 +22,7 @@ export class CategoryController {
 
   // Category Endpoints
   @Get()
+  @UseGuards(JwtAuthGuard)
   async findAll(@Response() res: ExpressResponse) {
     const categories = await this.categoryService.findAll();
 
@@ -34,6 +35,7 @@ export class CategoryController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async findOne(@Param('id') id: string, @Response() res: ExpressResponse) {
     const category = await this.categoryService.findOne(id);
 
@@ -79,6 +81,7 @@ export class CategoryController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   async remove(@Param('id') id: string, @Response() res: ExpressResponse) {
     const deletedCategory = await this.categoryService.remove(id);
 
@@ -91,6 +94,7 @@ export class CategoryController {
 
   // Service Endpoints (Under Categories)
   @Get(':name/services')
+  @UseGuards(JwtAuthGuard)
   async findAllServices(
     @Param('name') name: string,
     @Response() res: ExpressResponse,
@@ -105,13 +109,14 @@ export class CategoryController {
     });
   }
 
-  @Get(':name/services/:serviceId')
+  @Get(':name/services/:serviceName')
+  @UseGuards(JwtAuthGuard)
   async findOneService(
-    @Param('categoryId') name: string,
-    @Param('serviceId') serviceId: string,
+    @Param('categoryName') name: string,
+    @Param('serviceName') serviceName: string,
     @Response() res: ExpressResponse,
   ) {
-    const service = await this.categoryService.findOneService(serviceId);
+    const service = await this.categoryService.findOneService(serviceName);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
@@ -136,21 +141,39 @@ export class CategoryController {
     });
   }
 
-  @Patch(':categoryId/services/:serviceId')
+  @Patch('/services/:serviceName')
   @UseGuards(JwtAuthGuard)
   async updateService(
-    @Param('categoryId') categoryId: string,
-    @Param('serviceId') serviceId: string,
-    @Body() updateServiceDto: UpdateServiceDto,
+    @Param('serviceName') serviceName: string,
+    @Body() body: UpdateServiceDto,
+    @Response() res: ExpressResponse,
   ) {
-    return this.categoryService.updateService(serviceId, updateServiceDto);
+    const affectedRow = await this.categoryService.updateService(
+      serviceName,
+      body,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'Service updated successfully',
+      affectedRow,
+    });
   }
 
-  @Delete(':categoryId/services/:serviceId')
+  @Delete('/services/:serviceName')
+  @UseGuards(JwtAuthGuard)
   async removeService(
-    @Param('categoryId') categoryId: string,
-    @Param('serviceId') serviceId: string,
+    @Param('serviceName') serviceName: string,
+    @Response() res: ExpressResponse,
   ) {
-    return this.categoryService.removeService(serviceId);
+    const deletedService =
+      await this.categoryService.removeService(serviceName);
+
+    return res.status(HttpStatus.NO_CONTENT).json({
+      status: 'success',
+      statusCode: 204,
+      data: deletedService,
+    });
   }
 }

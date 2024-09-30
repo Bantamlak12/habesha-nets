@@ -98,40 +98,31 @@ export class CategoryService {
     return await this.serviceRepository.save(service);
   }
 
-  async updateService(
-    id: string,
-    updateServiceDto: UpdateServiceDto,
-  ): Promise<Service> {
+  async updateService(serviceName: string, body: any) {
     const service = await this.serviceRepository.findOne({
-      where: { id },
+      where: { name: serviceName },
       relations: ['category'],
     });
 
     if (!service) {
-      throw new NotFoundException(`Service with ID ${id} not found`);
+      throw new NotFoundException(`Service with ID ${serviceName} not found`);
     }
 
     // Only update fields present in updateServiceDto.  Avoid overwriting existing data.
-    Object.assign(service, updateServiceDto);
+    // Object.assign(service, body);
+    const updatedService = await this.serviceRepository.update(service['id'], {
+      ...body,
+    });
 
-    // Handle category update separately.  Only update if categoryId is provided.
-    if (updateServiceDto.categoryId) {
-      const category = await this.categoryRepository.findOneBy({
-        id: updateServiceDto.categoryId,
-      });
-      if (!category) {
-        throw new NotFoundException(
-          `Category with ID ${updateServiceDto.categoryId} not found`,
-        );
-      }
-      service.category = category;
-    }
-
-    return this.serviceRepository.save(service);
+    return updatedService.affected;
   }
 
-  async removeService(id: string): Promise<void> {
-    const service = await this.findOneService(id);
-    await this.serviceRepository.remove(service);
+  async removeService(serviceName: string): Promise<void> {
+    const service = await this.serviceRepository.findOne({
+      where: { name: serviceName },
+    });
+    if (service) {
+      await this.serviceRepository.delete(service);
+    }
   }
 }

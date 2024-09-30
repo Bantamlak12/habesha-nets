@@ -16,5 +16,4 @@ export class UpdateServiceDto {
   @IsOptional()
   @IsNotEmpty()
   description?: string;
-  categoryId?: string;
 }
