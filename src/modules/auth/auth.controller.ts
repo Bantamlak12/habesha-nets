@@ -374,7 +374,6 @@ export class AuthController {
   }
 
   @Patch('reset-password/:identifier')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary:
