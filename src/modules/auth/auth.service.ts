@@ -111,7 +111,7 @@ export class AuthService {
   }
 
   async resetAndUpdatePassword(
-    userId,
+    userId: string,
     id: string,
     newPassword: string,
     confirmPassword: string,
