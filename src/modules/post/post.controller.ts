@@ -24,6 +24,7 @@ import { PostService } from './post.service';
 import { EmployeeUpdatePostDto } from './dto/update-job-post.dto';
 import { CreatePropertyOwnersDto } from './dto/create-rental-post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { UpdatePropertyOwnersDto } from './dto/update-rental-post.dto';
 
 @Controller('posts')
 export class PostController {
@@ -64,7 +65,7 @@ export class PostController {
   @Get('job-post')
   @UseGuards(JwtAuthGuard)
   async EmployerGetAllPost(@Response() res: ExpressResponse) {
-    const post = await this.postService.getAllPost();
+    const post = await this.postService.getAllJobPost();
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -93,7 +94,7 @@ export class PostController {
   @Delete('job-post/:id')
   @UseGuards(JwtAuthGuard)
   async deletePost(@Param('id') id: string, @Response() res: ExpressResponse) {
-    const affectedRow = await this.postService.deletePost(id);
+    const affectedRow = await this.postService.deleteJobPost(id);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -150,11 +151,51 @@ export class PostController {
     });
   }
 
-  async rentalGetPost() {}
+  @Get('rental-post/:id')
+  @UseGuards(JwtAuthGuard)
+  async rentalGetPost(@Response() res: ExpressResponse) {}
 
-  async rentalGetPosts() {}
+  @Get('rental-posts')
+  @UseGuards(JwtAuthGuard)
+  async rentalGetAllPosts(@Response() res: ExpressResponse) {
+    const post = await this.postService.getAllRentalPost();
 
-  async rentalUpdatePost() {}
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      Results: post.length,
+      statusCode: 201,
+      data: post,
+    });
+  }
 
-  async rentalDeletePost() {}
+  @Get('rental-post/:id')
+  @UseGuards(JwtAuthGuard)
+  async rentalUpdatePost(
+    @Param('id') id: string,
+    @Body() body: UpdatePropertyOwnersDto,
+    @Response() res: ExpressResponse,
+  ) {
+    const affectedRow = await this.postService.rentalUpdate(id, body);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      affectedRow,
+    });
+  }
+
+  @Delete('rental-post/:id')
+  @UseGuards(JwtAuthGuard)
+  async rentalDeletePost(
+    @Param('id') id: string,
+    @Response() res: ExpressResponse,
+  ) {
+    const affectedRow = await this.postService.deleteRentalPost(id);
+
+    return res.status(HttpStatus.NO_CONTENT).json({
+      status: 'success',
+      statusCode: 204,
+      affectedRow,
+    });
+  }
 }
