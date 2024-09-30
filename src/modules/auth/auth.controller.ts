@@ -389,19 +389,21 @@ export class AuthController {
   async resetPassword(
     @Body() body: ResetPasswordDto,
     @Param('identifier') identifier: string,
-    @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
-    const userId = identifier.split(':')[1];
+    const tokenOrOtp = identifier.split(':')[0];
 
+    let userId: string;
     let token: string;
     let otpRecordId: string;
 
-    const isUUID = this.isValidUUID(identifier);
+    const isUUID = this.isValidUUID(tokenOrOtp);
     if (isUUID) {
-      otpRecordId = identifier;
+      otpRecordId = identifier.split(':')[0];
+      userId = identifier.split(':')[1];
     } else {
-      token = identifier;
+      token = identifier.split(':')[0];
+      userId = identifier.split(':')[1];
     }
 
     await this.authService.resetPassword(

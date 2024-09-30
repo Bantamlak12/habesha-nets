@@ -23,6 +23,7 @@ import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { ConfigService } from '@nestjs/config';
 import { generatePasswordResetEmail } from 'src/shared/mailer/templates/password-reset.template';
 import { Cron } from '@nestjs/schedule';
+import { use } from 'passport';
 
 const scrypt = promisify(crypto.scrypt);
 
@@ -558,7 +559,7 @@ export class AuthService {
 
       if (!resetToken) {
         throw new BadRequestException(
-          'You already may have have reseted your password. Ask a new reset reset link.',
+          'You already may have have reseted your password. Ask a new password reset link.',
         );
       }
 
@@ -566,7 +567,7 @@ export class AuthService {
         throw new BadRequestException('Your reset reset link has expired.');
       }
 
-      await this.resetAndUpdatePassword(
+      return await this.resetAndUpdatePassword(
         userId,
         resetToken.id,
         newPassword,
@@ -584,7 +585,7 @@ export class AuthService {
       );
     }
 
-    await this.resetAndUpdatePassword(
+    return await this.resetAndUpdatePassword(
       userId,
       otpRecordId,
       newPassword,
