@@ -509,7 +509,7 @@ export class AuthService {
       }
 
       const userId = user.id;
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}/${userId}`;
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password/${token}:${userId}`;
       const emailBody = generatePasswordResetEmail(
         resetUrl,
         new Date().getFullYear(),
