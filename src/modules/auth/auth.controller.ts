@@ -336,7 +336,6 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'This end point is used to request a password reset link.',
   })
