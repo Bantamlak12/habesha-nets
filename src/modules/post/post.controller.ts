@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   Response,
   UploadedFiles,
@@ -24,6 +25,7 @@ import { PostService } from './post.service';
 import { EmployeeUpdatePostDto } from './dto/update-job-post.dto';
 import { CreatePropertyOwnersDto } from './dto/create-rental-post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { UpdatePropertyOwnersDto } from './dto/update-rental-post.dto';
 
 @Controller('posts')
 export class PostController {
@@ -54,23 +56,30 @@ export class PostController {
   ) {
     const post = await this.postService.getPost(id);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      statusCode: 201,
+      statusCode: 200,
       data: post,
     });
   }
 
   @Get('job-post')
   @UseGuards(JwtAuthGuard)
-  async EmployerGetAllPost(@Response() res: ExpressResponse) {
-    const post = await this.postService.getAllPost();
+  async EmployerGetAllPost(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+    const post = await this.postService.getAllJobPost(userId, page, limit);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      Results: post.length,
-      statusCode: 201,
-      data: post,
+      Results: post.posts.length,
+      statusCode: 200,
+      totalPages: post.totalPages,
+      data: post.posts,
     });
   }
 
@@ -83,9 +92,9 @@ export class PostController {
   ) {
     const affectedRow = await this.postService.employerUpdatePost(body, id);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.OK).json({
       status: 'success',
-      statusCode: 201,
+      statusCode: 200,
       affectedRow,
     });
   }
@@ -93,11 +102,11 @@ export class PostController {
   @Delete('job-post/:id')
   @UseGuards(JwtAuthGuard)
   async deletePost(@Param('id') id: string, @Response() res: ExpressResponse) {
-    const affectedRow = await this.postService.deletePost(id);
+    const affectedRow = await this.postService.deleteJobPost(id);
 
-    return res.status(HttpStatus.CREATED).json({
+    return res.status(HttpStatus.NO_CONTENT).json({
       status: 'success',
-      statusCode: 201,
+      statusCode: 204,
       affectedRow,
     });
   }
@@ -150,11 +159,58 @@ export class PostController {
     });
   }
 
-  async rentalGetPost() {}
+  @Get('rental-post/:id')
+  @UseGuards(JwtAuthGuard)
+  async rentalGetPost(@Response() res: ExpressResponse) {}
 
-  async rentalGetPosts() {}
+  @Get('rental-posts')
+  @UseGuards(JwtAuthGuard)
+  async rentalGetAllPosts(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const userId = req.user['sub'];
+    const post = await this.postService.getAllRentalPost(userId, page, limit);
 
-  async rentalUpdatePost() {}
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      Results: post.posts.length,
+      statusCode: 200,
+      totalPages: post.totalPages,
+      data: post.posts,
+    });
+  }
 
-  async rentalDeletePost() {}
+  @Get('rental-post/:id')
+  @UseGuards(JwtAuthGuard)
+  async rentalUpdatePost(
+    @Param('id') id: string,
+    @Body() body: UpdatePropertyOwnersDto,
+    @Response() res: ExpressResponse,
+  ) {
+    const affectedRow = await this.postService.rentalUpdate(id, body);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      affectedRow,
+    });
+  }
+
+  @Delete('rental-post/:id')
+  @UseGuards(JwtAuthGuard)
+  async rentalDeletePost(
+    @Param('id') id: string,
+    @Response() res: ExpressResponse,
+  ) {
+    const affectedRow = await this.postService.deleteRentalPost(id);
+
+    return res.status(HttpStatus.NO_CONTENT).json({
+      status: 'success',
+      statusCode: 204,
+      affectedRow,
+    });
+  }
 }

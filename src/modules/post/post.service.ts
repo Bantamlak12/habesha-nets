@@ -37,9 +37,41 @@ export class PostService {
     return post;
   }
 
-  async getAllPost() {
-    const posts = await this.jobPostRepo.find({});
-    return posts;
+  async getAllJobPost(userId: string, page: number, limit: number) {
+    const filteringWord = 'Entertainment';
+    const query = this.jobPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('user.id = :userId', { userId })
+      .orderBy('JobPost.createdAt', 'DESC');
+
+    if (filteringWord) {
+      query.andWhere('JobPost.category = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
+  }
+
+  async getAllRentalPost(userId: string, page: number, limit: number) {
+    const [posts, total] = await this.rentalPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('user.id = :userId', { userId })
+      .orderBy('JobPost.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
   async employerUpdatePost(body: any, id: string) {
@@ -60,7 +92,7 @@ export class PostService {
     return updatedPost.affected;
   }
 
-  async deletePost(id: string) {
+  async deleteJobPost(id: string) {
     const result = await this.jobPostRepo.delete(id);
     return result.affected;
   }
@@ -75,13 +107,13 @@ export class PostService {
     if (images && process.env.NODE_ENV === 'development') {
       imageUrl = await Promise.all(
         images.map(async (file) => {
-          return await this.uploadService.uploadFile(file, 'portfolios');
+          return await this.uploadService.uploadFile(file, 'property-images');
         }),
       );
     } else if (images && process.env.NODE_ENV === 'production') {
       imageUrl = await Promise.all(
         images.map(async (file) => {
-          return await this.uploadService.uploadFile(file, 'portfolios');
+          return await this.uploadService.uploadFile(file, 'property-images');
         }),
       );
     }
@@ -97,5 +129,15 @@ export class PostService {
       postedBy: user,
     });
     await this.rentalPostRepo.save(newPost);
+  }
+
+  async rentalUpdate(id: string, body: any) {
+    const updatedPost = await this.jobPostRepo.update(id, { ...body });
+    return updatedPost.affected;
+  }
+
+  async deleteRentalPost(id: string) {
+    const result = await this.rentalPostRepo.delete(id);
+    return result.affected;
   }
 }
