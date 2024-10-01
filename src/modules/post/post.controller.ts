@@ -31,6 +31,46 @@ import { UpdatePropertyOwnersDto } from './dto/update-rental-post.dto';
 export class PostController {
   constructor(private readonly postService: PostService) {}
 
+  @Get('rental-lists')
+  async getAllRentalLists(
+    @Response() res: ExpressResponse,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('category') category: string,
+  ) {
+    const posts = await this.postService.getAllRentalLists(
+      page,
+      limit,
+      category,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      Results: posts.posts.length,
+      statusCode: 200,
+      totalPages: posts.totalPages,
+      data: posts.posts,
+    });
+  }
+
+  @Get('job-lists')
+  async getAllPosts(
+    @Response() res: ExpressResponse,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('category') category: string,
+  ) {
+    const posts = await this.postService.getAllJobLists(page, limit, category);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      Results: posts.posts.length,
+      statusCode: 200,
+      totalPages: posts.totalPages,
+      data: posts.posts,
+    });
+  }
+
   @Post('job-post')
   @UseGuards(JwtAuthGuard)
   async EmployerCreateJobPost(
@@ -70,15 +110,9 @@ export class PostController {
     @Response() res: ExpressResponse,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
-    @Query('category') category?: string,
   ) {
     const userId = req.user['sub'];
-    const post = await this.postService.getAllJobPost(
-      userId,
-      page,
-      limit,
-      category,
-    );
+    const post = await this.postService.getAllJobPost(userId, page, limit);
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
