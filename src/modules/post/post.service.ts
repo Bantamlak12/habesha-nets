@@ -18,6 +18,31 @@ export class PostService {
     private readonly uploadService: UploadService,
   ) {}
 
+  async queryHelper(
+    repo: Repository<any>,
+    page: number,
+    limit: number,
+    category: string,
+  ) {
+    const query = repo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .orderBy('JobPost.createdAt', 'DESC');
+
+    if (category) {
+      query.andWhere('JobPost.category = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
+  }
+
   async EmployerCreatePost(id: string, body: any) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
@@ -37,22 +62,13 @@ export class PostService {
     return post;
   }
 
-  async getAllJobPost(
-    userId: string,
-    page: number,
-    limit: number,
-    category?: string,
-  ) {
+  async getAllJobPost(userId: string, page: number, limit: number) {
     const query = this.jobPostRepo
       .createQueryBuilder('JobPost')
       .leftJoin('JobPost.postedBy', 'user')
       .addSelect(['user.firstName', 'user.lastName'])
       .where('user.id = :userId', { userId })
       .orderBy('JobPost.createdAt', 'DESC');
-
-    if (category) {
-      query.andWhere('JobPost.category = :category', { category });
-    }
 
     const [posts, total] = await query
       .skip((page - 1) * limit)
@@ -76,6 +92,14 @@ export class PostService {
 
     const totalPages = Math.ceil(total / limit);
     return { posts, totalPages };
+  }
+
+  async getAllRentalLists(page: number, limit: number, category: string) {
+    return await this.queryHelper(this.rentalPostRepo, page, limit, category);
+  }
+
+  async getAllJobLists(page: number, limit: number, category: string) {
+    return await this.queryHelper(this.jobPostRepo, page, limit, category);
   }
 
   async employerUpdatePost(body: any, id: string) {
