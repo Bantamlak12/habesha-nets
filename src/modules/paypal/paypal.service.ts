@@ -486,7 +486,7 @@ export class PaypalService {
       (billing) => billing.id,
     );
 
-    let user = await this.userRepo.findOne({
+    const user = await this.userRepo.findOne({
       where: { id: userId },
     });
 

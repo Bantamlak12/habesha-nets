@@ -81,7 +81,6 @@ export function generatePasswordResetEmail(
         <p style="text-align: center;">
           <a href="${resetUrl}" class="reset-button">Reset Password</a>
         </p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
         <p>If you did not request this, please ignore this email.</p>
       </div>
       <div class="footer">

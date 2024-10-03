@@ -10,7 +10,7 @@ import { LocationDto } from './location.dto';
 import { SalaryDto } from './salary.dto';
 import { Type } from 'class-transformer';
 
-export class UpdatePost {
+export class EmployeeUpdatePostDto {
   @IsOptional()
   @IsString()
   title: string;

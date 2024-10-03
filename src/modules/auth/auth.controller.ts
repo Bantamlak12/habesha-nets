@@ -336,7 +336,6 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'This end point is used to request a password reset link.',
   })
@@ -350,13 +349,12 @@ export class AuthController {
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      message: 'Password reset link has been sent to your email.',
+      message:
+        'Password reset link/OTP has been sent to your email/phone number.',
     });
   }
 
   @Post('check-opt')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary: 'This end point is used to check the validity of the OTP sent',
   })
@@ -375,8 +373,6 @@ export class AuthController {
   }
 
   @Patch('reset-password/:identifier')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('Authorization')
   @ApiOperation({
     summary:
       'This endpoint is used to reset your password if the token sent to your email is still valid.',
@@ -393,18 +389,21 @@ export class AuthController {
   async resetPassword(
     @Body() body: ResetPasswordDto,
     @Param('identifier') identifier: string,
-    @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
-    const userId = req.user['sub'];
+    const tokenOrOtp = identifier.split(':')[0];
+
+    let userId: string;
     let token: string;
     let otpRecordId: string;
 
-    const isUUID = this.isValidUUID(identifier);
+    const isUUID = this.isValidUUID(tokenOrOtp);
     if (isUUID) {
-      otpRecordId = identifier;
+      otpRecordId = identifier.split(':')[0];
+      userId = identifier.split(':')[1];
     } else {
-      token = identifier;
+      token = identifier.split(':')[0];
+      userId = identifier.split(':')[1];
     }
 
     await this.authService.resetPassword(
