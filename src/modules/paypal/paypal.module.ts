@@ -11,6 +11,7 @@ import { OAuth2Token } from './entities/token.entity';
 import { AuthModule } from '../auth/auth.module';
 import { User } from '../users/entities/users.entity';
 import { Subscription } from './entities/subscription.entity';
+import { Payment } from './entities/per-post-payment.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Subscription } from './entities/subscription.entity';
       Subscription,
       OAuth2Token,
       User,
+      Payment
     ]),
     ConfigModule.forRoot(),
     HttpModule,

@@ -9,6 +9,7 @@ import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { subscriptionConfirmationEmail } from 'src/shared/mailer/templates/subscription.template';
 import { subscriptionCancelEmail } from './templates/subscription-cancel.template';
 import { subscriptionPayemntConformationEmail } from './templates/subscription-payemnt_conformation';
+import { perPostPayemntConformationEmail } from './templates/per-post-approval.templet';
 
 @Injectable()
 export class CustomMailerService {
@@ -106,6 +107,29 @@ export class CustomMailerService {
     currency: string,
   ) {
     const emailBody = subscriptionPayemntConformationEmail(
+      'Habesha Nets',
+      new Date().getFullYear(),
+      `${userName}`,
+      `${transaction_id}`,
+      `${date}`,
+      `${amount}`,
+      `$${currency}`,
+    );
+
+    const subject = 'Subscription Payment Conformation';
+
+    await this.sendEmail(userEmail, subject, emailBody);
+  }
+
+  async perPostPayemntConformationEmail(
+    userName: string,
+    transaction_id: string,
+    amount: string,
+    userEmail: string,
+    date: Date,
+    currency: string,
+  ) {
+    const emailBody = perPostPayemntConformationEmail(
       'Habesha Nets',
       new Date().getFullYear(),
       `${userName}`,

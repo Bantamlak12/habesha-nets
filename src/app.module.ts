@@ -20,6 +20,7 @@ import { JobPost } from './modules/post/entities/create-post.entity';
 import { CategoryModule } from './modules/category/category.module';
 import { Category } from './modules/category/entities/category.entity';
 import { Service } from './modules/category/entities/service.entity';
+import { Payment } from './modules/paypal/entities/per-post-payment.entity';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { Service } from './modules/category/entities/service.entity';
           JobPost,
           Category,
           Service,
+          Payment
         ],
         synchronize: true,
         ssl: false,
