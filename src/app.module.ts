@@ -21,6 +21,7 @@ import { CategoryModule } from './modules/category/category.module';
 import { RentalPost } from './modules/post/entities/rental-post.entity';
 import { Category } from './modules/category/entities/category.entity';
 import { Service } from './modules/category/entities/service.entity';
+import { Payment } from './modules/paypal/entities/per-post-payment.entity';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { Service } from './modules/category/entities/service.entity';
           RentalPost,
           Category,
           Service,
+          Payment
         ],
         synchronize: true,
         ssl:

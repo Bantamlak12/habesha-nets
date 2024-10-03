@@ -11,11 +11,12 @@ import {
   Req,
   Patch,
   Get,
+  Query,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Request as ExpressRequest,
-  Response as ExxpressResponse,
+  Response as ExpressResponse,
 } from 'express';
 import { PaypalService } from './paypal.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,13 +25,11 @@ import { Repository } from 'typeorm';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 import { User } from '../users/entities/users.entity';
 import { BillingPlan } from './entities/billing.entity';
-
-interface WebhookVerificationResponse {
-  verification_status: 'SUCCESS' | 'FAILURE';
-}
+import * as PayPalSDK from '@paypal/checkout-server-sdk';
 
 @Controller('paypal')
 export class PaypalController {
+  private client: PayPalSDK.PayPalHttpClient;
   constructor(
     @InjectRepository(Subscription)
     private readonly subscriptionRepo: Repository<Subscription>,
@@ -44,9 +43,15 @@ export class PaypalController {
 
   @Post('get-token')
   @UseGuards(JwtAuthGuard)
-  async getToken() {
+  async getToken(@Response() res: ExpressResponse) {
     try {
-      return await this.paypalService.getAccessToken();
+      const token = await this.paypalService.getAccessToken();
+
+      return res.status(HttpStatus.OK).json({
+        status: 'success',
+        statusCode: 200,
+        data: token,
+      });
     } catch (error) {
       throw new HttpException(
         'Unable to retrieve access token',
@@ -55,42 +60,119 @@ export class PaypalController {
     }
   }
 
-  //create product name
+  //Create Product Name
   @Post('create-product')
   @UseGuards(JwtAuthGuard)
-  async createProduct() {
-    const result = await this.paypalService.createProduct();
-    return result;
+  async createProduct(@Response() res: ExpressResponse) {
+    await this.paypalService.createProduct();
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'Product reated successfully',
+    });
   }
 
   //List Product
   @Get('list-products')
   @UseGuards(JwtAuthGuard)
-  async getProducts() {
-    return this.paypalService.fetchProducts();
+  async getProducts(@Response() res: ExpressResponse) {
+    const Product = await this.paypalService.fetchProducts();
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      data: Product,
+    });
   }
 
   //Update Product
   @Patch('products/:id')
+  @UseGuards(JwtAuthGuard)
   async updateProduct(
     @Param('id') id: string,
-    @Body() updateData: { description?: string; category?: string }, // Accept object with optional fields
+    @Body() updateData: { description?: string; category?: string },
+    @Response() res: ExpressResponse,
   ) {
-    return this.paypalService.updateProduct(id, updateData);
+    const affectedRow = await this.paypalService.updateProduct(id, updateData);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      affectedRow,
+    });
   }
 
-  //Create Plan
-  @Post('create-plan')
-  async createPlan(@Body() body: any) {
-    return await this.paypalService.createBillingPlan(
-      body.PaypalRequestId,
+  //Create Plan for subscription based payment
+  @Post('create-subscription-plan')
+  @UseGuards(JwtAuthGuard)
+  async createPlan(@Body() body: any, @Response() res: ExpressResponse) {
+    await this.paypalService.createBillingPlan(
       body.name,
       body.description,
       body.amount,
+      body.currency_code,
       body.interval_count,
       body.interval_unit,
     );
+
+    return res.status(HttpStatus.CREATED).json({
+      status: 'success',
+      statusCode: 201,
+      message: 'Subscription Plan created successfully',
+    });
   }
+
+  //List Plan
+  @Get('billing-plans')
+  @UseGuards(JwtAuthGuard)
+  async getBillingPlans(@Response() res: ExpressResponse): Promise<any> {
+    const response = await this.paypalService.fetchBillingPlans();
+
+    const plans = response.plans || [];
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      results: plans.length,
+      statusCode: 200,
+      data: plans,
+    });
+  }
+
+  //Deactivate billing plan
+  @Post('billing-plans/:planId/deactivate')
+  async deactivatePlan(
+    @Param('planId') planId: string,
+    @Response() res: ExpressResponse,
+  ) {
+    const deactivatedPlan = await this.paypalService.deactivatePlan(planId);
+
+    return res.status(HttpStatus.NO_CONTENT).json({
+      status: 'success',
+      statusCode: 204,
+      data: deactivatedPlan,
+    });
+  }
+
+   //Activate billing plan
+  @Post('billing-plans/:planId/activate')
+@UseGuards(JwtAuthGuard)
+async activateBillingPlan(@Param('planId') planId: string, @Response() res: ExpressResponse): Promise<any> {
+  try {
+    const response = await this.paypalService.activatePlan(planId);
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      data: response,
+    });
+  } catch (error) {
+    return res.status(error.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+      status: 'error',
+      statusCode: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      message: error.message || 'Failed to activate billing plan',
+    });
+  }
+}
 
   //Create Subscription
   @Post('create-subscription/:planId')
@@ -98,6 +180,7 @@ export class PaypalController {
   async createSubscription(
     @Param('planId') planId: string,
     @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
   ) {
     const parameterId = parseInt(planId, 10);
     const userId = req.user?.['sub'];
@@ -109,7 +192,13 @@ export class PaypalController {
         parameterId,
         userId,
       );
-      return subscription;
+      const redirectURL = subscription;
+
+      return res.status(HttpStatus.CREATED).json({
+        status: 'success',
+        statusCode: 201,
+        redirectUrl: redirectURL,
+      });
     } catch (error) {
       throw new HttpException(
         `Failed to create PayPal subscription: ${error.message}`,
@@ -119,7 +208,7 @@ export class PaypalController {
   }
 
   @Post('paypal-webhook')
-  async handleWebhook(@Req() req: Request, @Response() res: ExxpressResponse) {
+  async handleWebhook(@Req() req: Request, @Response() res: ExpressResponse) {
     const authAlgo = req.headers['paypal-auth-algo'];
     const certUrl = req.headers['paypal-cert-url'];
     const transmissionId = req.headers['paypal-transmission-id'];
@@ -153,8 +242,18 @@ export class PaypalController {
           await this.handleSubscriptionCancelled(resource);
           break;
 
+        case 'BILLING.SUBSCRIPTION.RENEWED':
+          await this.handleSubscriptionRenewed(resource);
+          break;
+
         case 'PAYMENT.SALE.COMPLETED':
           await this.handlePaymentCompleted(resource);
+          break;
+
+        case 'PAYMENTS.PAYMENT.COMPLETED':
+          const source_per = req.body;
+          console.log('payemt completed' + JSON.stringify(source_per, null, 2));
+          // await this.handlePerPostPaymentCompleted(source_per);
           break;
 
         default:
@@ -168,6 +267,18 @@ export class PaypalController {
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .send('Error handling webhook event');
     }
+  }
+
+  async handleSubscriptionRenewed(resource) {
+    // Logic to update subscription status in your database
+    const subscriptionId = resource.id;
+    const subscriptionStatus = resource.status;
+    console.log(
+      `Subscription renewed: ${subscriptionId}, Status: ${subscriptionStatus}`,
+    );
+
+    // Update your database or notify the user
+    // await this.updateSubscriptionStatus(subscriptionId, subscriptionStatus);
   }
 
   private async handleSubscriptionActivated(resource) {
@@ -363,12 +474,136 @@ export class PaypalController {
     );
   }
 
+  /*
+START
+  */
+  // Create Order for Per Post Payment
+  @Post('create-Perpost')
+  @UseGuards(JwtAuthGuard)
+  async createPerPostPayment(
+    @Body('totalAmount') totalAmount: string,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    const returnUrl = 'http://localhost:3000/paypal/success'; // Adjust for your frontend
+    const cancelUrl = 'http://localhost:3000/paypal/cancel'; // Adjust for your frontend
+
+    try {
+      const payment = await this.paypalService.createPayment(
+        totalAmount,
+        returnUrl,
+        cancelUrl,
+      );
+
+      // Extract the approval URL from the payment response
+      const approvalUrl = payment.links.find(
+        (link) => link.rel === 'approval_url',
+      ).href;
+
+      return res.status(HttpStatus.CREATED).json({
+        status: 'success',
+        statusCode: 201,
+        redirectUrl: approvalUrl,
+      });
+    } catch (error) {
+      throw new HttpException(
+        `Failed to create payment: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Handle payment success
+  @Get('success')
+  // @UseGuards(JwtAuthGuard)
+  async handlePaymentSuccess(
+    @Query('paymentId') paymentId: string,
+    @Query('PayerID') payerId: string,
+    @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
+  ) {
+    if (!paymentId || !payerId) {
+      throw new HttpException(
+        'Missing paymentId or PayerID',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      // Execute the payment
+      const payment = await this.paypalService.executePayment(
+        paymentId,
+        payerId,
+      );
+
+      console.log(payment);
+
+      // Store payment details in the database
+      // const userId = req.user?.['sub']; // Get user ID from the request
+      const userId = 'fd5ba9e8-17f3-4fd0-9cd1-a913e1f04e0c';
+      await this.paypalService.storePaymentDetails(payment, userId);
+      await this.mailerservice.perPostPayemntConformationEmail(
+        payment.payer.payer_info.first_name,
+        payment.id,
+        payment.transactions[0].amount.total,
+        payment.payer.payer_info.email,
+        new Date(),
+        payment.transactions[0].amount.currency,
+      );
+
+      // Redirect the user to a confirmation page
+
+      return res.status(HttpStatus.CREATED).json({
+        status: 'success',
+        statusCode: 201,
+        redirectUrl: 'https://github.com/eijiotieno-official?tab=repositories',
+      });
+    } catch (error) {
+      throw new HttpException(
+        `Payment execution failed: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('perpost')
+  async getAllPayments(@Response() res: ExpressResponse) {
+    const payments = await this.paypalService.findAll();
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      results: payments.length,
+      statusCode: 200,
+      data: payments,
+    });
+  }
+
+  @Get('perpost:id')
+  async getPaymentById(
+    @Param('id') id: number,
+    @Response() res: ExpressResponse,
+  ) {
+    const payment = await this.paypalService.findById(id);
+    if (!payment) {
+      return res.status(HttpStatus.NOT_FOUND).json({
+        status: 'error',
+        message: 'Payment not found',
+      });
+    }
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      data: payment,
+    });
+  }
+
+  /* END */
+
   //Canceel Subscription
   @Post('cancel')
   @UseGuards(JwtAuthGuard)
   async handleWebhoo(
     @Request() req: ExpressRequest,
-    @Response() res: ExxpressResponse,
+    @Response() res: ExpressResponse,
   ) {
     const userId = req.user['sub'];
     const subscriptionId = (

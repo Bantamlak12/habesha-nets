@@ -19,6 +19,8 @@ import { BillingPlan } from './entities/billing.entity';
 import { User } from '../users/entities/users.entity';
 import { Subscription } from './entities/subscription.entity';
 import axios from 'axios';
+import * as paypal from '@paypal/checkout-server-sdk';
+import { Payment } from './entities/per-post-payment.entity';
 
 @Injectable()
 export class PaypalService {
@@ -39,6 +41,8 @@ export class PaypalService {
     private readonly billingRepo: Repository<BillingPlan>,
     @InjectRepository(Subscription)
     private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Payment)
+    private paymentRepository: Repository<Payment>,
   ) {
     this.PAYPAL_API = this.config.get<string>('PAYPAL_API');
   }
@@ -167,6 +171,7 @@ export class PaypalService {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          Prefer: 'return=representation',
         },
       })
       .pipe(
@@ -267,16 +272,23 @@ export class PaypalService {
 
   //Create Billing Plan For subscription
   async createBillingPlan(
-    paypalRequestId: string,
     name: string, // weekly
     description: string,
     amount: string, //23423432
+    currency_code: string,
     interval_count: number, //1
     interval_unit: string, //week
   ): Promise<any> {
     const paypalUrlBillingPlan = `${this.PAYPAL_API}/v1/billing/plans`;
-
     const accessToken = await this.getToken();
+    function generatePaypalRequestId(): string {
+      const prefix = 'PRO';
+      const randomNumber = Math.floor(10000 + Math.random() * 90000); // Generates a number between 10000 and 99999
+      return `${prefix}${randomNumber.toString().slice(0, 4)}`; // Take only the first four digits
+    }
+
+    const paypalRequestId = generatePaypalRequestId();
+
     const requestConfig = {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -304,7 +316,7 @@ export class PaypalService {
           pricing_scheme: {
             fixed_price: {
               value: amount,
-              currency_code: 'USD',
+              currency_code: currency_code,
             },
           },
         },
@@ -313,7 +325,7 @@ export class PaypalService {
         auto_bill_outstanding: true,
         setup_fee: {
           value: '1',
-          currency_code: 'USD',
+          currency_code: currency_code,
         },
         setup_fee_failure_action: 'CONTINUE',
         payment_failure_threshold: 3,
@@ -371,6 +383,98 @@ export class PaypalService {
         error.response ? error.response.data : error,
       );
       throw error;
+    }
+  }
+
+  async fetchBillingPlans(): Promise<any> {
+    const paypalApiUrlListPlan = `${this.PAYPAL_API}/v1/billing/plans?sort_by=create_time&sort_order=desc`;
+    const accessToken = await this.getToken();
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Prefer: 'return=representation',
+      },
+    };
+
+    try {
+      const response = await lastValueFrom(
+        this.httpService.get(paypalApiUrlListPlan, requestConfig),
+      );
+      return response.data; // Return the fetched billing plans
+    } catch (error) {
+      console.error(
+        'Error fetching billing plans',
+        error.response ? error.response.data : error,
+      );
+      throw error; // Handle error as needed
+    }
+  }
+
+  async deactivatePlan(planId: string): Promise<any> {
+    const url = `${this.PAYPAL_API}/v1/billing/plans/${planId}/deactivate`;
+    const accessToken = await this.getToken();
+    const billingPlan = await this.billingRepo.findOne( {where: {id: planId}});
+
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Prefer: 'return=representation',
+      },
+    };
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(url, {}, requestConfig),
+      );
+
+      billingPlan.status = 'DEACTIVE';
+      billingPlan.update_time = new Date(); // Update the timestamp
+      await this.billingRepo.save(billingPlan); // Save the updated 
+      return response.data; // Return the fetched billing plans
+    } catch (error) {
+      console.log(error)
+      throw new HttpException(
+        error.response?.data || 'Failed to deactivate plan',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async activatePlan(planId: string): Promise<any> {
+    const url = `${this.PAYPAL_API}/v1/billing/plans/${planId}/activate`; // Correct endpoint for activation
+    const accessToken = await this.getToken();
+    const billingPlan = await this.billingRepo.findOne( {where: {id: planId}});
+    
+    console.log('Access Token:', accessToken);
+    console.log('Activation URL:', url);
+  
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Prefer: 'return=representation',
+      },
+    };
+  
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(url, {}, requestConfig),
+      );
+      billingPlan.status = 'ACTIVE';
+      billingPlan.update_time = new Date(); // Update the timestamp
+      await this.billingRepo.save(billingPlan); // Save the updated 
+      return response.data; // Return the response data
+    } catch (error) {
+      console.error('Error during activation:', error); // Log the entire error
+      throw new HttpException(
+        error.response?.data || 'Failed to activate plan',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -616,4 +720,121 @@ export class PaypalService {
       throw error;
     }
   }
+
+  //start
+  // Create Payment for Per Post
+  async createPayment(
+    amount: string,
+    returnUrl: string,
+    cancelUrl: string,
+  ): Promise<any> {
+    const createPaymentUrl = `${this.PAYPAL_API}/v1/payments/payment`;
+    const accessToken = await this.getToken();
+
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    };
+
+    const paymentData = {
+      intent: 'sale',
+      payer: {
+        payment_method: 'paypal',
+      },
+      redirect_urls: {
+        return_url: returnUrl,
+        cancel_url: cancelUrl,
+      },
+      transactions: [
+        {
+          amount: {
+            total: amount,
+            currency: 'USD',
+          },
+          description: 'Payment for post on our website',
+        },
+      ],
+    };
+
+    try {
+      const response: AxiosResponse = await lastValueFrom(
+        this.httpService.post(createPaymentUrl, paymentData, requestConfig),
+      );
+
+      return response.data; // Return payment details
+    } catch (error) {
+      this.logger.error(
+        'Error creating PayPal payment',
+        error.response?.data || error.message,
+      );
+      throw new HttpException(
+        'Failed to create payment',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Execute Payment
+  async executePayment(paymentId: string, payerId: string): Promise<any> {
+    const executePaymentUrl = `${this.PAYPAL_API}/v1/payments/payment/${paymentId}/execute`;
+    const accessToken = await this.getToken();
+
+    const requestConfig = {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    };
+
+    const executeData = {
+      payer_id: payerId,
+    };
+
+    try {
+      const response: AxiosResponse = await lastValueFrom(
+        this.httpService.post(executePaymentUrl, executeData, requestConfig),
+      );
+
+      return response.data; // Return executed payment details
+    } catch (error) {
+      this.logger.error(
+        'Error executing PayPal payment',
+        error.response?.data || error.message,
+      );
+      throw new HttpException(
+        'Failed to execute payment',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async storePaymentDetails(paymentData: any, userId: string): Promise<void> {
+    const newPayment = this.paymentRepository.create({
+      paymentId: paymentData.id,
+      userId: userId,
+      state: paymentData.state,
+      payerEmail: paymentData.payer.payer_info.email,
+      payerFirstName: paymentData.payer.payer_info.first_name,
+      payerLastName: paymentData.payer.payer_info.last_name,
+      amount: paymentData.transactions[0].amount.total,
+      currency: paymentData.transactions[0].amount.currency,
+      description: paymentData.transactions[0].description,
+      links: paymentData.links,
+    });
+
+    await this.paymentRepository.save(newPayment);
+  }
+
+  async findAll(): Promise<Payment[]> {
+    return this.paymentRepository.find();
+  }
+
+  async findById(id: number): Promise<Payment> {
+    return this.paymentRepository.findOneBy({ id });
+  }
+  //end
+
+
 }
