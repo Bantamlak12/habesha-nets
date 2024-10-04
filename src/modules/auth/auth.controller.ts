@@ -213,30 +213,22 @@ export class AuthController {
 
     const isProfileCompleted = user['isProfileCompleted'];
     let message: string;
-    let username: string;
-    let email: string;
-    let phoneNumber: string;
-
     if (isProfileCompleted) {
       message = 'You are successfully signed in.';
-      username = `${user['firstName']} ${user['lastName']}`;
     } else {
-      email = user['email'];
-      phoneNumber = user['phoneNumber'];
       message = 'You must complete your profile.';
     }
+
+    const signedInUser = await this.userRepo.findOne({
+      where: { id: user['id'] },
+    });
+    if (signedInUser) delete signedInUser.password;
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
       statusCode: 200,
-      data: {
-        userType: user['userType'],
-        username,
-        email,
-        phoneNumber,
-        isProfileCompleted: user['isProfileCompleted'],
-        message,
-      },
+      message,
+      user: signedInUser,
     });
   }
 
