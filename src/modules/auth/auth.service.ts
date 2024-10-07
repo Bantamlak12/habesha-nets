@@ -23,7 +23,6 @@ import { capitalizeString } from 'src/shared/utils/capitilize-string.util';
 import { ConfigService } from '@nestjs/config';
 import { generatePasswordResetEmail } from 'src/shared/mailer/templates/password-reset.template';
 import { Cron } from '@nestjs/schedule';
-import { use } from 'passport';
 
 const scrypt = promisify(crypto.scrypt);
 
