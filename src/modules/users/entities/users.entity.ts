@@ -58,7 +58,13 @@ export abstract class User {
   email: string;
 
   @Column({ unique: true, default: null })
+  secondaryEmail: string;
+
+  @Column({ unique: true, default: null })
   phoneNumber: string;
+
+  @Column({ unique: true, default: null })
+  secondaryPhoneNumber: string;
 
   @Column()
   password: string;
