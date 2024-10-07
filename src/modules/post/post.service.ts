@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { JobPost } from './entities/employer-post.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { RentalPost } from './entities/rental-post.entity';
 import { User } from '../users/entities/users.entity';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class PostService {
@@ -17,6 +18,12 @@ export class PostService {
     private readonly rentalPostRepo: Repository<RentalPost>,
     private readonly uploadService: UploadService,
   ) {}
+
+  @Cron('0 0 1 * *') // Runs at midnight on 1st of every month
+  async cleanupExpiredResetTokens(): Promise<void> {
+    await this.jobPostRepo.delete({ status: 'closed' });
+    await this.rentalPostRepo.delete({ postStatus: 'rented' });
+  }
 
   async queryHelper(
     repo: Repository<any>,
