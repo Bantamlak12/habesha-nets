@@ -35,76 +35,87 @@ import { UpdateBabySitterFinderDto } from '../auth/dto/update-baby-sitter-finder
 export class UserController {
   constructor(private readonly userService: UsersService) {}
 
-  @Get('employee')
+  @Get('service-providers')
   @UseGuards(JwtAuthGuard)
-  async findAllEmploy(
+  async findAllServiceProviders(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
   ) {
-    const ID = req.user?.['id'];
-    const Employeeys = await this.userService.findAllEmploy(ID);
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'employer') {
+      users = await this.userService.findAllserviceProviders();
+    }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: Employeeys.length,
+      results: users.length,
       statusCode: 200,
-      data: Employeeys,
-    });
-  }
-  //Get Owner
-
-  @Get('renter')
-  @UseGuards(JwtAuthGuard)
-  async findAllOwner(
-    @Response() res: ExpressResponse,
-    @Request() req: ExpressRequest,
-  ) {
-    const ID = req.user?.['id'];
-    const Owner = await this.userService.findAllOwner(ID);
-
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      results: Owner.length,
-      statusCode: 200,
-      data: Owner,
+      data: users,
     });
   }
 
-  //Get Baby Sitter
-
-  @Get('babysitter')
+  @Get('renters')
   @UseGuards(JwtAuthGuard)
-  async findAllBabySitter(
+  async findAllPropertyRenters(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
   ) {
-    const ID = req.user?.['id'];
-    const BabySitter = await this.userService.findAllBabySitter(ID);
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'propertyOwner') {
+      users = await this.userService.findAllPropertyRenters();
+    }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: BabySitter.length,
+      results: users.length,
       statusCode: 200,
-      data: BabySitter,
+      data: users,
     });
   }
 
-  //Get Care Giver
-
-  @Get('caregiver')
+  @Get('baby-sitters')
   @UseGuards(JwtAuthGuard)
-  async findAllCareGiver(
+  async findAllBabySitters(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
   ) {
-    const ID = req.user?.['id'];
-    const BabySitter = await this.userService.findAllCareGiver(ID);
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'babySitterFinder') {
+      users = await this.userService.findAllBabySitters();
+    }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: BabySitter.length,
+      results: users.length,
       statusCode: 200,
-      data: BabySitter,
+      data: users,
+    });
+  }
+
+  @Get('care-givers')
+  @UseGuards(JwtAuthGuard)
+  async findAllCareGivers(
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+  ) {
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'careGiverFinder') {
+      users = await this.userService.findAllCareGivers();
+    }
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      results: users.length,
+      statusCode: 200,
+      data: users,
     });
   }
 

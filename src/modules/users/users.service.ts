@@ -13,84 +13,46 @@ export class UsersService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async findAllEmploy(ID: string): Promise<User[]> {
-    try {
-      const employer = await this.userRepo.findOneBy({ id: ID });
+  async findAllserviceProviders() {
+    const employersList = await this.userRepo.find({
+      where: { userType: 'serviceProvider' },
+    });
 
-      if (employer.userType === 'service provider') {
-        const employersList = await this.userRepo.findBy({
-          userType: 'employer',
-        });
-
-        return employersList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    return employersList;
   }
 
-  async findAllOwner(ID: string): Promise<User[]> {
-    try {
-      const owner = await this.userRepo.findOneBy({ id: ID });
+  async findAllPropertyRenters() {
+    const renters = await this.userRepo.find({
+      where: {
+        serviceCategory: 'Rentals',
+      },
+    });
 
-      if (owner.userType === 'service provider') {
-        const ownerList = await this.userRepo.findBy({
-          serviceCategory: 'Rentals',
-        });
-
-        return ownerList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    return renters;
   }
 
-  async findAllBabySitter(ID: string): Promise<User[]> {
-    try {
-      const babysitter = await this.userRepo.findOneBy({ id: ID });
+  async findAllBabySitters() {
+    const babysitterList = await this.userRepo.find({
+      where: {
+        serviceTitle: In(['Babysitter', 'Nanny', 'Date night babysitter']),
+      },
+    });
 
-      if (babysitter.userType === 'service provider') {
-        const babysitterList = await this.userRepo.findBy({
-          serviceTitle: In(['Babysitter', 'Nanny', 'Date night babysitter']),
-        });
-
-        return babysitterList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    return babysitterList;
   }
 
-  async findAllCareGiver(ID: string): Promise<User[]> {
-    try {
-      const babysitter = await this.userRepo.findOneBy({ id: ID });
+  async findAllCareGivers() {
+    const babysitterList = await this.userRepo.find({
+      where: {
+        serviceTitle: In([
+          'Eldercare',
+          'Dog walker',
+          'Special needs caregiver',
+        ]),
+      },
+    });
 
-      if (babysitter.userType === 'service provider') {
-        const babysitterList = await this.userRepo.findBy({
-          serviceTitle: In([
-            'Eldercare',
-            'Dog walker',
-            'Special needs caregiver',
-          ]),
-        });
-
-        return babysitterList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    return babysitterList;
   }
 
   async updateEmployerProfile(
