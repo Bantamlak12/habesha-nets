@@ -71,6 +71,9 @@ export class RentalPost {
   @Column({ type: 'text', nullable: true })
   rentalTerms: string;
 
+  @Column({ type: 'enum', enum: ['available', 'rented'], default: 'available' })
+  postStatus: 'available' | 'rented';
+
   @ManyToOne(() => User, (user) => user.rentalPosts, { eager: true })
   postedBy: User;
 

@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsArray,
   IsObject,
+  IsIn,
 } from 'class-validator';
 
 export class UpdatePropertyOwnersDto {
@@ -81,4 +82,8 @@ export class UpdatePropertyOwnersDto {
   @IsOptional()
   @IsString()
   rentalTerms?: string;
+
+  @IsOptional()
+  @IsIn(['available', 'rented'])
+  postStatus: 'available' | 'rented';
 }
