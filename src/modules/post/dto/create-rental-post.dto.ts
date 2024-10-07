@@ -43,6 +43,18 @@ export class CreatePropertyOwnersDto {
   };
 
   @IsOptional()
+  @IsString()
+  numberOfBedRooms?: string;
+
+  @IsOptional()
+  @IsString()
+  numberOfBathRooms?: string;
+
+  @IsOptional()
+  @IsString()
+  size?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
@@ -54,10 +66,6 @@ export class CreatePropertyOwnersDto {
   @IsOptional()
   @IsString()
   rulesAndConditions?: string;
-
-  @IsOptional()
-  @IsString()
-  size?: string;
 
   @IsOptional()
   @Transform(({ value }) => {

@@ -38,6 +38,18 @@ export class UpdatePropertyOwnersDto {
   };
 
   @IsOptional()
+  @IsString()
+  numberOfBedRooms?: string;
+
+  @IsOptional()
+  @IsString()
+  numberOfBathRooms?: string;
+
+  @IsOptional()
+  @IsString()
+  size?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
@@ -49,10 +61,6 @@ export class UpdatePropertyOwnersDto {
   @IsOptional()
   @IsString()
   rulesAndConditions?: string;
-
-  @IsOptional()
-  @IsString()
-  size?: string;
 
   @IsOptional()
   @IsNumber()

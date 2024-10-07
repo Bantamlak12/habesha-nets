@@ -1,4 +1,5 @@
 import { User } from 'src/modules/users/entities/users.entity';
+import { json } from 'stream/consumers';
 import {
   Entity,
   Column,
@@ -38,6 +39,15 @@ export class RentalPost {
   };
 
   @Column({ type: 'jsonb', nullable: true })
+  numberOfBedRooms: number;
+
+  @Column({ type: 'jsonb', nullable: true })
+  numberOfBathRooms: number;
+
+  @Column({ nullable: true })
+  size: string;
+
+  @Column({ type: 'jsonb', nullable: true })
   images: string[];
 
   @Column({ nullable: true })
@@ -45,9 +55,6 @@ export class RentalPost {
 
   @Column({ type: 'text', nullable: true })
   rulesAndConditions: string;
-
-  @Column({ nullable: true })
-  size: string;
 
   @Column({ nullable: true })
   capacity: number;

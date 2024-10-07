@@ -108,19 +108,7 @@ export class PostService {
   }
 
   async employerUpdatePost(body: any, id: string) {
-    const updatedPost = await this.jobPostRepo.update(id, {
-      title: body.title,
-      description: body.description,
-      jobType: body.jobType,
-      companyName: body.companyName,
-      location: body.location,
-      salary: body.salary,
-      requiredSkills: body.requiredSkills,
-      experienceLevel: body.experienceLevel,
-      category: body.category,
-      applicationDeadline: body.applicationDeadline,
-      status: body.status,
-    });
+    const updatedPost = await this.jobPostRepo.update(id, { ...body });
 
     return updatedPost.affected;
   }
