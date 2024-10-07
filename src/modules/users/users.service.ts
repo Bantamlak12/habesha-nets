@@ -126,4 +126,64 @@ export class UsersService {
 
     return updatedUser;
   }
+
+  async updateServiceProvidersProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+    portfolioFiles: Express.Multer.File[],
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    let portfolioUrls: string[] = [];
+    if (portfolioFiles && process.env.NODE_ENV === 'development') {
+      portfolioUrls = await Promise.all(
+        portfolioFiles.map(async (file) => {
+          return await this.uploadService.uploadFile(file, 'portfolios');
+        }),
+      );
+    } else if (portfolioFiles && process.env.NODE_ENV === 'production') {
+      portfolioUrls = await Promise.all(
+        portfolioFiles.map(async (file) => {
+          return await this.uploadService.uploadFile(file, 'portfolios');
+        }),
+      );
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      secondaryEmail: user.secondaryEmail,
+      secondaryPhoneNumber: user.secondaryPhoneNumber,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
+      profession: body.profession,
+      skills: body.skills,
+      qualifications: body.qualifications,
+      portfolioLinks: body.portfolioLinks,
+      portfolioFiles: portfolioUrls,
+      bio: body.bio,
+      experience: body.experience,
+      availability: body.availability,
+      languages: body.languages,
+      hourlyRate: body.hourlyRate,
+    });
+
+    await this.userRepo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
+  }
 }
