@@ -141,7 +141,10 @@ export class PostController {
 
   @Delete('job-post/:id')
   @UseGuards(JwtAuthGuard)
-  async deletePost(@Param('id') id: string, @Response() res: ExpressResponse) {
+  async EmployerdeletePost(
+    @Param('id') id: string,
+    @Response() res: ExpressResponse,
+  ) {
     const affectedRow = await this.postService.deleteJobPost(id);
 
     return res.status(HttpStatus.NO_CONTENT).json({
@@ -201,7 +204,18 @@ export class PostController {
 
   @Get('rental-post/:id')
   @UseGuards(JwtAuthGuard)
-  async rentalGetPost(@Response() res: ExpressResponse) {}
+  async getRentalPost(
+    @Param('id') id: string,
+    @Response() res: ExpressResponse,
+  ) {
+    const post = await this.postService.getRentalPost(id);
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      post,
+    });
+  }
 
   @Get('rental-posts')
   @UseGuards(JwtAuthGuard)
@@ -223,7 +237,7 @@ export class PostController {
     });
   }
 
-  @Get('rental-post/:id')
+  @Patch('rental-post/:id')
   @UseGuards(JwtAuthGuard)
   async rentalUpdatePost(
     @Param('id') id: string,

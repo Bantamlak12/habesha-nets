@@ -58,7 +58,12 @@ export class PostService {
   }
 
   async getPost(id: string) {
-    const post = await this.jobPostRepo.findOne({ where: { id } });
+    const post = this.jobPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('JobPost.id = :id', { id })
+      .getOne();
     return post;
   }
 
@@ -157,6 +162,16 @@ export class PostService {
       postedBy: user,
     });
     await this.rentalPostRepo.save(newPost);
+  }
+
+  async getRentalPost(id: string) {
+    const post = this.rentalPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .where('JobPost.id = :id', { id })
+      .getOne();
+    return post;
   }
 
   async rentalUpdate(id: string, body: any) {
