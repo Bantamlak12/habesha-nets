@@ -28,6 +28,8 @@ import {
 } from '@nestjs/platform-express';
 import { updateServiceProvidersDto } from '../auth/dto/update-service-provider-profile.dto';
 import { UpdatePropertyOwnerDto } from '../auth/dto/update-property-owner-profile.dto';
+import { UpdatePropertyRenterDto } from '../auth/dto/update-property-renter.dto';
+import { UpdateBabySitterFinderDto } from '../auth/dto/update-baby-sitter-finder-profile.dto';
 
 @Controller('users')
 export class UserController {
@@ -110,7 +112,7 @@ export class UserController {
   @Patch('/employer/profile')
   @UseInterceptors(FileInterceptor('profilePicture'))
   @UseGuards(JwtAuthGuard)
-  async completeEmployerProfile(
+  async updateEmployerProfile(
     @Body() body: UpdateEmployerProfile,
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
@@ -152,7 +154,7 @@ export class UserController {
       { name: 'portfolioFiles', maxCount: 5 },
     ]),
   )
-  async completeServiceProvidersProfile(
+  async updateServiceProvidersProfile(
     @Body() body: updateServiceProvidersDto,
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
@@ -242,7 +244,7 @@ export class UserController {
   @UseInterceptors(
     FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
   )
-  async completePropertyOwnersProfile(
+  async updatePropertyOwnersProfile(
     @Body() body: UpdatePropertyOwnerDto,
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
@@ -277,6 +279,161 @@ export class UserController {
     }
 
     const user = await this.userService.updatePropertyOwnersProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have updated your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/property-renters/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async updatePropertyRenterProfile(
+    @Body() body: UpdatePropertyRenterDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'propertyRenter') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+    const user = await this.userService.updatePropertyRenterProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have updated your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/baby-sitter-finder/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async updateBabySitterFinderProfile(
+    @Body() body: UpdateBabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'babySitterFinder') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.userService.updateBabySitterFinderProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/care-giver-finder/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async completeCareGiverFinderProfile(
+    @Body() body: UpdateBabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'careGiverFinder') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.userService.updateCareGiverFinderProfile(
       id,
       body,
       profilePicture,
