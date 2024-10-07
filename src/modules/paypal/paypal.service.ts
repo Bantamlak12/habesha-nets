@@ -415,7 +415,9 @@ export class PaypalService {
   async deactivatePlan(planId: string): Promise<any> {
     const url = `${this.PAYPAL_API}/v1/billing/plans/${planId}/deactivate`;
     const accessToken = await this.getToken();
-    const billingPlan = await this.billingRepo.findOne( {where: {id: planId}});
+    const billingPlan = await this.billingRepo.findOne({
+      where: { id: planId },
+    });
 
     const requestConfig = {
       headers: {
@@ -433,10 +435,10 @@ export class PaypalService {
 
       billingPlan.status = 'DEACTIVE';
       billingPlan.update_time = new Date(); // Update the timestamp
-      await this.billingRepo.save(billingPlan); // Save the updated 
+      await this.billingRepo.save(billingPlan); // Save the updated
       return response.data; // Return the fetched billing plans
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new HttpException(
         error.response?.data || 'Failed to deactivate plan',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
@@ -447,11 +449,13 @@ export class PaypalService {
   async activatePlan(planId: string): Promise<any> {
     const url = `${this.PAYPAL_API}/v1/billing/plans/${planId}/activate`; // Correct endpoint for activation
     const accessToken = await this.getToken();
-    const billingPlan = await this.billingRepo.findOne( {where: {id: planId}});
-    
+    const billingPlan = await this.billingRepo.findOne({
+      where: { id: planId },
+    });
+
     console.log('Access Token:', accessToken);
     console.log('Activation URL:', url);
-  
+
     const requestConfig = {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -460,14 +464,14 @@ export class PaypalService {
         Prefer: 'return=representation',
       },
     };
-  
+
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, {}, requestConfig),
       );
       billingPlan.status = 'ACTIVE';
       billingPlan.update_time = new Date(); // Update the timestamp
-      await this.billingRepo.save(billingPlan); // Save the updated 
+      await this.billingRepo.save(billingPlan); // Save the updated
       return response.data; // Return the response data
     } catch (error) {
       console.error('Error during activation:', error); // Log the entire error
@@ -835,6 +839,4 @@ export class PaypalService {
     return this.paymentRepository.findOneBy({ id });
   }
   //end
-
-
 }

@@ -37,9 +37,6 @@ export class RentalPost {
     to: Date;
   };
 
-  @Column({ nullable: true })
-  rentalDuration: string;
-
   @Column({ type: 'jsonb', nullable: true })
   images: string[];
 

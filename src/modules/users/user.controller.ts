@@ -143,7 +143,7 @@ export class UserController {
     });
   }
 
-  @Patch('service-providers/profile/complete')
+  @Patch('/service-providers/profile')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileFieldsInterceptor([

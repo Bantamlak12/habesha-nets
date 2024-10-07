@@ -154,25 +154,28 @@ export class PaypalController {
     });
   }
 
-   //Activate billing plan
+  //Activate billing plan
   @Post('billing-plans/:planId/activate')
-@UseGuards(JwtAuthGuard)
-async activateBillingPlan(@Param('planId') planId: string, @Response() res: ExpressResponse): Promise<any> {
-  try {
-    const response = await this.paypalService.activatePlan(planId);
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      statusCode: 200,
-      data: response,
-    });
-  } catch (error) {
-    return res.status(error.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
-      status: 'error',
-      statusCode: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      message: error.message || 'Failed to activate billing plan',
-    });
+  @UseGuards(JwtAuthGuard)
+  async activateBillingPlan(
+    @Param('planId') planId: string,
+    @Response() res: ExpressResponse,
+  ): Promise<any> {
+    try {
+      const response = await this.paypalService.activatePlan(planId);
+      return res.status(HttpStatus.OK).json({
+        status: 'success',
+        statusCode: 200,
+        data: response,
+      });
+    } catch (error) {
+      return res.status(error.status || HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 'error',
+        statusCode: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        message: error.message || 'Failed to activate billing plan',
+      });
+    }
   }
-}
 
   //Create Subscription
   @Post('create-subscription/:planId')
@@ -340,9 +343,8 @@ async activateBillingPlan(@Param('planId') planId: string, @Response() res: Expr
       subscriptionPlan,
       nextBillingDate,
     );
-    console.log(
-      'Subscription activated, status updated to ACTIVE from wwebhook',
-    );
+
+    await this.userRepo.update(userId, { isProfileCompleted: true });
   }
 
   private async handleSubscriptionCancelled(resource) {

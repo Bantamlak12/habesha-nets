@@ -51,6 +51,7 @@ export class updateServiceProvidersDto {
   address: AddressDto;
 
   @IsOptional()
+  @IsString()
   preferredContactMethod: 'Phone' | 'Email' | 'SMS';
 
   @IsOptional()
