@@ -703,10 +703,6 @@ export class AuthService {
 
     await this.userRepo.update(userId, { isProfileCompleted: true });
 
-    // ⁡⁢⁢⁢⁡⁢⁢⁢𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡⁡
-
-    // ⁡⁢⁣⁣⁡⁢⁣⁣⁡⁢⁢⁢𝗚𝗜𝗩𝗘 𝗔𝗖𝗖𝗘𝗦𝗦 𝗧𝗢 𝗧𝗛𝗘 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗⁡
-
     return updatedUser;
   }
 
