@@ -43,10 +43,6 @@ export class CreatePropertyOwnersDto {
   };
 
   @IsOptional()
-  @IsString()
-  rentalDuration?: string;
-
-  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
