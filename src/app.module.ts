@@ -50,13 +50,13 @@ import { Payment } from './modules/paypal/entities/per-post-payment.entity';
           RentalPost,
           Category,
           Service,
-          Payment
+          Payment,
         ],
-        synchronize: true,
+        synchronize: process.env.NODE_ENV === 'development' ? true : false,
         ssl:
           process.env.NODE_ENV === 'development'
             ? { rejectUnauthorized: false }
-            : { rejectUnauthorized: true },
+            : { rejctUnauthorized: true },
       }),
     }),
     AuthModule,
