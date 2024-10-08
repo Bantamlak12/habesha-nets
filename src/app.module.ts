@@ -53,10 +53,10 @@ import { Payment } from './modules/paypal/entities/per-post-payment.entity';
           Payment
         ],
         synchronize: true,
-        ssl:
-          process.env.NODE_ENV === 'development'
-            ? { rejectUnauthorized: false }
-            : { rejectUnauthorized: true },
+        ssl: false
+          // process.env.NODE_ENV === 'development'
+          //   ? { rejectUnauthorized: false }
+          //   : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
