@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   PrimaryGeneratedColumn,
   ManyToOne,
+  Index,
+  OneToMany,
 } from 'typeorm';
 
 @Entity('rental-posts')
@@ -16,59 +18,44 @@ export class RentalPost {
   @Column()
   title: string;
 
-  @Column('text')
-  description: string;
-
   @Column()
   rentalType: string; // Car, Truck, House
 
+  @Column('text')
+  description: string;
+
+  @Index()
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
-  @Column({ type: 'jsonb' })
-  location: {
-    city?: string;
-    country?: string;
-  };
-
-  @Column({ type: 'jsonb' })
-  availabilityDate: {
-    from: Date;
-    to: Date;
-  };
-
-  @Column({ type: 'jsonb', nullable: true })
-  numberOfBedRooms: number;
-
-  @Column({ type: 'jsonb', nullable: true })
-  numberOfBathRooms: number;
+  @Column({ nullable: true })
+  country: string;
 
   @Column({ nullable: true })
-  size: string;
-
-  @Column({ type: 'jsonb', nullable: true })
-  images: string[];
+  city: string;
 
   @Column({ nullable: true })
-  contactInfo: string;
-
-  @Column({ type: 'text', nullable: true })
-  rulesAndConditions: string;
+  street: string;
 
   @Column({ nullable: true })
-  capacity: number;
+  postalCode: string;
+
+  @OneToMany(() => RentalPostImage, (image) => image.rentalPost, {
+    cascade: true,
+  })
+  images: RentalPostImage[];
+
+  @Column({ type: 'date' })
+  availableFrom: Date;
+
+  @Column({ type: 'date' })
+  availableUntil: Date;
 
   @Column({ nullable: true })
-  insurance: number;
+  phoneNumber: string;
 
   @Column({ nullable: true })
-  furnishing: string;
-
-  @Column({ nullable: true })
-  utilities: string;
-
-  @Column({ type: 'text', nullable: true })
-  rentalTerms: string;
+  email: string;
 
   @Column({ type: 'enum', enum: ['available', 'rented'], default: 'available' })
   postStatus: 'available' | 'rented';
@@ -81,4 +68,18 @@ export class RentalPost {
 
   @UpdateDateColumn()
   updatedAt: Date;
+}
+
+@Entity('rental-post-images')
+export class RentalPostImage {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => RentalPost, (rentalPoast) => rentalPoast.images, {
+    onDelete: 'CASCADE',
+  })
+  rentalPost: RentalPost;
+
+  @Column()
+  imageUrl: string;
 }
