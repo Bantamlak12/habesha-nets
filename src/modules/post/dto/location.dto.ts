@@ -1,15 +1,15 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
-export class LocationDto {
-  @IsOptional()
-  @IsString()
-  city: string;
-
-  @IsOptional()
+export class Location {
   @IsString()
   country: string;
 
-  @IsOptional()
-  @IsBoolean()
-  remote: boolean;
+  @IsString()
+  city: string;
+
+  @IsString()
+  street: string;
+
+  @IsString()
+  postalCode: string;
 }

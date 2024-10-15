@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import { JobPost } from './entities/employer-post.entity';
+import { JobPost } from './entities/job-post.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { RentalPost } from './entities/rental-post.entity';
+import { RentalPost, RentalPostImage } from './entities/rental-post.entity';
 import { User } from '../users/entities/users.entity';
 import { Cron } from '@nestjs/schedule';
 
@@ -16,6 +16,8 @@ export class PostService {
     private readonly jobPostRepo: Repository<JobPost>,
     @InjectRepository(RentalPost)
     private readonly rentalPostRepo: Repository<RentalPost>,
+    @InjectRepository(RentalPostImage)
+    private readonly rentalPostImageRepo: Repository<RentalPostImage>,
     private readonly uploadService: UploadService,
   ) {}
 
@@ -57,7 +59,20 @@ export class PostService {
     }
 
     const newPost = this.jobPostRepo.create({
-      ...body,
+      title: body.title,
+      category: body.category,
+      description: body.description,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      remote: body.remote,
+      hourlyRate: body.hourlyRate,
+      startTime: body.schedule.start,
+      endTime: body.schedule.end,
+      preferredHours: body.schedule.preferredHours,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
       postedBy: user,
     });
 
@@ -115,7 +130,23 @@ export class PostService {
   }
 
   async employerUpdatePost(body: any, id: string) {
-    const updatedPost = await this.jobPostRepo.update(id, { ...body });
+    const updatedPost = await this.jobPostRepo.update(id, {
+      title: body.title,
+      category: body.category,
+      description: body.description,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      remote: body.remote,
+      hourlyRate: body.hourlyRate,
+      startTime: body.schedule.start,
+      endTime: body.schedule.end,
+      preferredHours: body.schedule.preferredHours,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
+      status: body.status,
+    });
 
     return updatedPost.affected;
   }
@@ -152,8 +183,22 @@ export class PostService {
     }
 
     const newPost = this.rentalPostRepo.create({
-      ...body,
-      images: imageUrl,
+      title: body.title,
+      rentalType: body.rentalType,
+      description: body.description,
+      price: body.price,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      images: imageUrl.map((url) =>
+        this.rentalPostImageRepo.create({ imageUrl: url }),
+      ),
+      availableFrom: body.availabilityDate.from,
+      availableUntil: body.availabilityDate.until,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
+      postStatus: body.postStatus,
       postedBy: user,
     });
     await this.rentalPostRepo.save(newPost);
@@ -170,7 +215,21 @@ export class PostService {
   }
 
   async rentalUpdate(id: string, body: any) {
-    const updatedPost = await this.jobPostRepo.update(id, { ...body });
+    const updatedPost = await this.rentalPostRepo.update(id, {
+      title: body.title,
+      rentalType: body.rentalType,
+      description: body.description,
+      price: body.price,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      availableFrom: body.availabilityDate.from,
+      availableUntil: body.availabilityDate.until,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
+      postStatus: body.postStatus,
+    });
     return updatedPost.affected;
   }
 

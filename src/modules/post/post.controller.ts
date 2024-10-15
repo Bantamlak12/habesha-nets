@@ -19,40 +19,19 @@ import {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from 'express';
-import { EmployeeCreatePostDto } from './dto/create-job-post.dto';
+import { CreatePostDto } from './dto/create-job-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PostService } from './post.service';
-import { EmployeeUpdatePostDto } from './dto/update-job-post.dto';
+import { UpdateJobPostDto } from './dto/update-job-post.dto';
 import { CreatePropertyOwnersDto } from './dto/create-rental-post.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { UpdatePropertyOwnersDto } from './dto/update-rental-post.dto';
+import { UpdateRentalPostDto } from './dto/update-rental-post.dto';
 
 @Controller('posts')
 export class PostController {
   constructor(private readonly postService: PostService) {}
 
-  @Get('rental-lists')
-  async getAllRentalLists(
-    @Response() res: ExpressResponse,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('category') category: string,
-  ) {
-    const posts = await this.postService.getAllRentalLists(
-      page,
-      limit,
-      category,
-    );
-
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      Results: posts.posts.length,
-      statusCode: 200,
-      totalPages: posts.totalPages,
-      data: posts.posts,
-    });
-  }
-
+  // JOB POST
   @Get('job-lists')
   async getAllPosts(
     @Response() res: ExpressResponse,
@@ -74,7 +53,7 @@ export class PostController {
   @Post('job-post')
   @UseGuards(JwtAuthGuard)
   async EmployerCreateJobPost(
-    @Body() body: EmployeeCreatePostDto,
+    @Body() body: CreatePostDto,
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
   ) {
@@ -127,7 +106,7 @@ export class PostController {
   @UseGuards(JwtAuthGuard)
   async EmployerUpdatePost(
     @Param('id') id: string,
-    @Body() body: EmployeeUpdatePostDto,
+    @Body() body: UpdateJobPostDto,
     @Response() res: ExpressResponse,
   ) {
     const affectedRow = await this.postService.employerUpdatePost(body, id);
@@ -154,26 +133,47 @@ export class PostController {
     });
   }
 
+  // RENTAL POSTS
+  @Get('rental-lists')
+  async getAllRentalLists(
+    @Response() res: ExpressResponse,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('category') category: string,
+  ) {
+    const posts = await this.postService.getAllRentalLists(
+      page,
+      limit,
+      category,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      Results: posts.posts.length,
+      statusCode: 200,
+      totalPages: posts.totalPages,
+      data: posts.posts,
+    });
+  }
+
   @Post('rental-post')
   @UseGuards(JwtAuthGuard)
-  @UseInterceptors(
-    FileFieldsInterceptor([{ name: 'propertyImages', maxCount: 5 }]),
-  )
+  @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 5 }]))
   async PropertyOwnerCreateJobPost(
     @Body() body: CreatePropertyOwnersDto,
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
     @UploadedFiles()
     files?: {
-      propertyImages?: Express.Multer.File[];
+      images?: Express.Multer.File[];
     },
   ) {
-    const propertyImages = files?.propertyImages || [];
+    const images = files?.images || [];
 
     let totalSize: number = 0;
     let imageCount: number = 0;
 
-    propertyImages.forEach((file) => {
+    images.forEach((file) => {
       totalSize += file.size;
       if (file.mimetype.startsWith('image/')) {
         imageCount++;
@@ -193,7 +193,7 @@ export class PostController {
     }
 
     const id = req.user['sub'];
-    await this.postService.createPropertyOwnersPost(id, body, propertyImages);
+    await this.postService.createPropertyOwnersPost(id, body, images);
 
     return res.status(HttpStatus.CREATED).json({
       status: 'success',
@@ -241,7 +241,7 @@ export class PostController {
   @UseGuards(JwtAuthGuard)
   async rentalUpdatePost(
     @Param('id') id: string,
-    @Body() body: UpdatePropertyOwnersDto,
+    @Body() body: UpdateRentalPostDto,
     @Response() res: ExpressResponse,
   ) {
     const affectedRow = await this.postService.rentalUpdate(id, body);

@@ -1,98 +1,72 @@
-import { Transform } from 'class-transformer';
 import {
   IsString,
   IsOptional,
-  IsNumber,
-  IsArray,
-  IsObject,
   IsIn,
+  IsNotEmpty,
+  IsJSON,
+  IsDecimal,
+  ValidateNested,
+  IsArray,
 } from 'class-validator';
+import { Location } from './location.dto';
+import { plainToClass, Transform, Type } from 'class-transformer';
+import { Availability } from './availability.dto';
+import { ContactInfo } from './contact.dto';
 
 export class CreatePropertyOwnersDto {
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @IsString()
-  description: string;
-
-  @IsString()
+  @IsNotEmpty()
   rentalType: string;
 
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @Transform(({ value }) => {
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? null : parsed;
-  })
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+  @IsDecimal()
+  @IsNotEmpty()
   price: number;
 
-  @IsObject()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? JSON.parse(value) : value,
-  )
-  location: {
-    city?: string;
-    country?: string;
-  };
-
-  @IsObject()
-  @Transform(({ value }) =>
-    typeof value === 'string' ? JSON.parse(value) : value,
-  )
-  availabilityDate: {
-    from: Date;
-    to: Date;
-  };
-
-  @IsOptional()
-  @IsString()
-  numberOfBedRooms?: string;
-
-  @IsOptional()
-  @IsString()
-  numberOfBathRooms?: string;
-
-  @IsOptional()
-  @IsString()
-  size?: string;
+  @ValidateNested()
+  @Type(() => Location)
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(Location, parsedValue);
+    }
+    return value;
+  })
+  location: Location;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
 
-  @IsOptional()
-  @IsString()
-  contactInfo?: string;
-
-  @IsOptional()
-  @IsString()
-  rulesAndConditions?: string;
-
-  @IsOptional()
+  @ValidateNested()
+  @Type(() => Availability)
   @Transform(({ value }) => {
-    const parsed = parseInt(value);
-    return isNaN(parsed) ? null : parsed;
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(Availability, parsedValue);
+    }
+    return value;
   })
-  capacity?: number;
+  availabilityDate: Availability;
 
-  @IsOptional()
+  @ValidateNested()
+  @Type(() => ContactInfo)
   @Transform(({ value }) => {
-    const parsed = parseInt(value);
-    return isNaN(parsed) ? null : parsed;
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(ContactInfo, parsedValue);
+    }
+    return value;
   })
-  insurance?: number;
-
-  @IsOptional()
-  @IsString()
-  furnishing?: string;
-
-  @IsOptional()
-  @IsString()
-  utilities?: string;
-
-  @IsOptional()
-  @IsString()
-  rentalTerms?: string;
+  contactInfo?: ContactInfo;
 
   @IsIn(['available', 'rented'])
   postStatus: 'available' | 'rented';

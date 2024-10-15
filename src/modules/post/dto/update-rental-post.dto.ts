@@ -1,54 +1,49 @@
+import { plainToClass, Transform, Type } from 'class-transformer';
 import {
   IsString,
   IsOptional,
-  IsNumber,
   IsArray,
-  IsObject,
   IsIn,
+  IsNotEmpty,
+  IsDecimal,
+  ValidateNested,
 } from 'class-validator';
+import { Availability } from './availability.dto';
+import { ContactInfo } from './contact.dto';
+import { Location } from './location.dto';
 
-export class UpdatePropertyOwnersDto {
+export class UpdateRentalPostDto {
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @IsOptional()
   @IsString()
-  description: string;
-
-  @IsOptional()
-  @IsString()
+  @IsNotEmpty()
   rentalType: string;
 
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+  @IsOptional()
+  @IsDecimal()
+  @IsNotEmpty()
   price: number;
 
   @IsOptional()
-  @IsObject()
-  location: {
-    city?: string;
-    country?: string;
-  };
-
-  @IsOptional()
-  @IsObject()
-  availabilityDate: {
-    from: Date;
-    to: Date;
-  };
-
-  @IsOptional()
-  @IsString()
-  numberOfBedRooms?: string;
-
-  @IsOptional()
-  @IsString()
-  numberOfBathRooms?: string;
-
-  @IsOptional()
-  @IsString()
-  size?: string;
+  @ValidateNested()
+  @Type(() => Location)
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(Location, parsedValue);
+    }
+    return value;
+  })
+  location: Location;
 
   @IsOptional()
   @IsArray()
@@ -56,32 +51,21 @@ export class UpdatePropertyOwnersDto {
   images?: string[];
 
   @IsOptional()
-  @IsString()
-  contactInfo?: string;
+  @ValidateNested()
+  @Type(() => Availability)
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const parsedValue = JSON.parse(value);
+      return plainToClass(Availability, parsedValue);
+    }
+    return value;
+  })
+  availabilityDate: Availability;
 
   @IsOptional()
-  @IsString()
-  rulesAndConditions?: string;
-
-  @IsOptional()
-  @IsNumber()
-  capacity?: number;
-
-  @IsOptional()
-  @IsNumber()
-  insurance?: number;
-
-  @IsOptional()
-  @IsString()
-  furnishing?: string;
-
-  @IsOptional()
-  @IsString()
-  utilities?: string;
-
-  @IsOptional()
-  @IsString()
-  rentalTerms?: string;
+  @ValidateNested()
+  @Type(() => ContactInfo)
+  contactInfo?: ContactInfo;
 
   @IsOptional()
   @IsIn(['available', 'rented'])
