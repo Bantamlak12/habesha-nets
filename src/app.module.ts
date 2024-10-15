@@ -22,6 +22,7 @@ import { RentalPost } from './modules/post/entities/rental-post.entity';
 import { Category } from './modules/category/entities/category.entity';
 import { Service } from './modules/category/entities/service.entity';
 import { Payment } from './modules/paypal/entities/per-post-payment.entity';
+import * as fs from 'fs';
 
 @Module({
   imports: [
@@ -50,13 +51,24 @@ import { Payment } from './modules/paypal/entities/per-post-payment.entity';
           RentalPost,
           Category,
           Service,
-          Payment
+          Payment,
         ],
         synchronize: true,
         ssl:
           process.env.NODE_ENV === 'development'
             ? { rejectUnauthorized: false }
-            : { rejectUnauthorized: true },
+            : {
+                rejectUnauthorized: true,
+                ca: fs
+                  .readFileSync('/var/lib/postgresql/certs/ca.crt')
+                  .toString(),
+                key: fs
+                  .readFileSync('/var/lib/postgresql/certs/server.key')
+                  .toString(),
+                cert: fs
+                  .readFileSync('/var/lib/postgresql/certs/server.crt')
+                  .toString(),
+              },
       }),
     }),
     AuthModule,

@@ -1,0 +1,20 @@
+# Official PostgreSQL version 16 image as the base image
+FROM postgres:16
+
+# Copy the certificates into the container
+COPY generate_ssl_certs.sh /
+
+# Make the script executable
+RUN chmod +x /generate_ssl_certs.sh
+
+# Run the SSL generation script
+RUN /generate_ssl_certs.sh
+
+# Change ownership of the certs directory to the postgres user
+RUN chown -R postgres:postgres /var/lib/postgresql/certs
+
+# Switch to postgres user
+USER postgres
+
+# Start PostgreSQL
+CMD ["postgres", "-c", "ssl=on", "-c", "ssl_cert_file=/var/lib/postgresql/certs/server.crt", "-c", "ssl_key_file=/var/lib/postgresql/certs/server.key", "-c", "ssl_ca_file=/var/lib/postgresql/certs/ca.crt"]

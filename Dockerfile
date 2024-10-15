@@ -16,5 +16,7 @@ COPY . .
 # Expose port 300 for nest application
 EXPOSE 3000
 
+RUN npm run build
+
 # Run the application
-CMD ["/app/wait-for-it.sh", "postgres:5432", "--", "npm", "run", "start:dev"]
+CMD ["/app/wait-for-it.sh", "postgres:5432", "--", "npm", "run", "start:prod"] 
