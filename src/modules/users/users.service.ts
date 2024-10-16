@@ -13,46 +13,76 @@ export class UsersService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async findAllserviceProviders() {
-    const employersList = await this.userRepo.find({
-      where: { userType: 'serviceProvider' },
-    });
+  async findAllserviceProviders(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.userType = :userType', {
+        userType: 'serviceProvider',
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-    return employersList;
+    const [employees, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return { employees, totalPages };
   }
 
-  async findAllPropertyRenters() {
-    const renters = await this.userRepo.find({
-      where: {
+  async findAllPropertyRenters(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.serviceCategory = :serviceCategory', {
         serviceCategory: 'Rentals',
-      },
-    });
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-    return renters;
+    const [renters, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return { renters, totalPages };
   }
 
-  async findAllBabySitters() {
-    const babysitterList = await this.userRepo.find({
-      where: {
-        serviceTitle: In(['Babysitter', 'Nanny', 'Date night babysitter']),
-      },
-    });
+  async findAllBabySitters(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.serviceTitle IN (:...serviceTitle)', {
+        serviceTitle: ['Babysitter', 'Nanny', 'Date Night Babysitter'],
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-    return babysitterList;
+    const [babysitters, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return { babysitters, totalPages };
   }
 
-  async findAllCareGivers() {
-    const babysitterList = await this.userRepo.find({
-      where: {
-        serviceTitle: In([
-          'Eldercare',
-          'Dog walker',
-          'Special needs caregiver',
-        ]),
-      },
-    });
+  async findAllCareGivers(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.serviceTitle IN (:...serviceTitle)', {
+        serviceTitle: ['Eldercare', 'Dog Walker', 'Special Needs Caregiver'],
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-    return babysitterList;
+    const [caregivers, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return { caregivers, totalPages };
   }
 
   async updateEmployerProfile(
