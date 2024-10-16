@@ -8,8 +8,10 @@ import {
   MaxFileSizeValidator,
   ParseFilePipe,
   Patch,
+  Query,
   Request,
   Response,
+  UnauthorizedException,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -40,19 +42,32 @@ export class UserController {
   async findAllServiceProviders(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     const userType = req.user?.['userType'];
     let users: any;
 
     if (userType === 'employer') {
-      users = await this.userService.findAllserviceProviders();
+      users = await this.userService.findAllserviceProviders(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.employees.map((user: any) => delete user.password);
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: users.length,
+      Results: users.employees.length,
       statusCode: 200,
-      data: users,
+      totalPages: users.totalPages,
+      data: users.employees,
     });
   }
 
@@ -61,19 +76,32 @@ export class UserController {
   async findAllPropertyRenters(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     const userType = req.user?.['userType'];
     let users: any;
 
     if (userType === 'propertyOwner') {
-      users = await this.userService.findAllPropertyRenters();
+      users = await this.userService.findAllPropertyRenters(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.renters.map((user: any) => delete user.password);
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: users.length,
+      Results: users.renters.length,
       statusCode: 200,
-      data: users,
+      totalPages: users.totalPages,
+      data: users.renters,
     });
   }
 
@@ -82,19 +110,32 @@ export class UserController {
   async findAllBabySitters(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     const userType = req.user?.['userType'];
     let users: any;
 
     if (userType === 'babySitterFinder') {
-      users = await this.userService.findAllBabySitters();
+      users = await this.userService.findAllBabySitters(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.babysitters.map((user: any) => delete user.password);
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: users.length,
+      Results: users.babysitters.length,
       statusCode: 200,
-      data: users,
+      totalPages: users.totalPages,
+      data: users.babysitters,
     });
   }
 
@@ -103,19 +144,32 @@ export class UserController {
   async findAllCareGivers(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     const userType = req.user?.['userType'];
     let users: any;
 
     if (userType === 'careGiverFinder') {
-      users = await this.userService.findAllCareGivers();
+      users = await this.userService.findAllCareGivers(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.caregivers.map((user: any) => delete user.password);
     }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: users.length,
+      Results: users.caregivers.length,
       statusCode: 200,
-      data: users,
+      totalPages: users.totalPages,
+      data: users.caregivers,
     });
   }
 
