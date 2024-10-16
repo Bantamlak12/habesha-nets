@@ -740,6 +740,8 @@ export class AuthService {
       propertyType: body.propertyType,
     });
 
+    await this.userRepo.update(userId, { isProfileCompleted: true });
+
     return updatedUser;
   }
 
@@ -822,6 +824,8 @@ export class AuthService {
       preferredContactMethod: body.preferredContactMethod,
       address: body.address,
     });
+
+    await this.userRepo.update(userId, { isProfileCompleted: true });
 
     return updatedUser;
   }

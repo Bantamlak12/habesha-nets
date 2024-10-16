@@ -343,8 +343,6 @@ export class PaypalController {
       subscriptionPlan,
       nextBillingDate,
     );
-
-    await this.userRepo.update(userId, { isProfileCompleted: true });
   }
 
   private async handleSubscriptionCancelled(resource) {
