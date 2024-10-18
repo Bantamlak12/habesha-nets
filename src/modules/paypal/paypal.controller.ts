@@ -29,7 +29,6 @@ import * as PayPalSDK from '@paypal/checkout-server-sdk';
 
 @Controller('paypal')
 export class PaypalController {
-  private client: PayPalSDK.PayPalHttpClient;
   constructor(
     @InjectRepository(Subscription)
     private readonly subscriptionRepo: Repository<Subscription>,
@@ -38,7 +37,6 @@ export class PaypalController {
     @InjectRepository(BillingPlan)
     private readonly billingRepo: Repository<BillingPlan>,
     private readonly paypalService: PaypalService,
-    private readonly mailerservice: CustomMailerService,
   ) {}
 
   @Post('get-token')
@@ -329,16 +327,16 @@ export class PaypalController {
       { id: userId },
       { subscriptionUpdated: new Date(), subscriptionStatus: 'subscribed' },
     );
-    await this.mailerservice.sendEmailNotification(
-      userName,
-      'Activated',
-      userEmail,
-      totalAmount,
-      createTime,
-      currency,
-      subscriptionPlan,
-      nextBillingDate,
-    );
+    // await this.mailerservice.sendEmailNotification(
+    //   userName,
+    //   'Activated',
+    //   userEmail,
+    //   totalAmount,
+    //   createTime,
+    //   currency,
+    //   subscriptionPlan,
+    //   nextBillingDate,
+    // );
 
     await this.userRepo.update(userId, { isProfileCompleted: true });
   }
@@ -449,14 +447,14 @@ export class PaypalController {
 
     const { value: value, currency_code: currencyCode } = amount;
 
-    await this.mailerservice.sendPayemntConformationEmailNotification(
-      userName,
-      transactionId,
-      value,
-      userEmail,
-      createTime,
-      currencyCode,
-    );
+    // await this.mailerservice.sendPayemntConformationEmailNotification(
+    //   userName,
+    //   transactionId,
+    //   value,
+    //   userEmail,
+    //   createTime,
+    //   currencyCode,
+    // );
   }
 
   /*
@@ -529,14 +527,14 @@ START
       const userId = req.user?.['sub']; // Get user ID from the request
       // const userId = 'fd5ba9e8-17f3-4fd0-9cd1-a913e1f04e0c';
       await this.paypalService.storePaymentDetails(payment, userId);
-      await this.mailerservice.perPostPayemntConformationEmail(
-        payment.payer.payer_info.first_name,
-        payment.id,
-        payment.transactions[0].amount.total,
-        payment.payer.payer_info.email,
-        new Date(),
-        payment.transactions[0].amount.currency,
-      );
+      // await this.mailerservice.perPostPayemntConformationEmail(
+      //   payment.payer.payer_info.first_name,
+      //   payment.id,
+      //   payment.transactions[0].amount.total,
+      //   payment.payer.payer_info.email,
+      //   new Date(),
+      //   payment.transactions[0].amount.currency,
+      // );
 
       // Redirect the user to a confirmation page
 
@@ -638,14 +636,14 @@ START
         { id: userId },
         { subscriptionUpdated: new Date(), subscriptionStatus: 'unsubscribed' },
       );
-      await this.mailerservice.sendCancelEmailNotification(
-        userName,
-        'CANCELLED',
-        userEmail,
-        totalAmount,
-        updateDate,
-        currency_code,
-      );
+      // await this.mailerservice.sendCancelEmailNotification(
+      //   userName,
+      //   'CANCELLED',
+      //   userEmail,
+      //   totalAmount,
+      //   updateDate,
+      //   currency_code,
+      // );
 
       res.status(HttpStatus.OK).send();
     } catch (error) {
