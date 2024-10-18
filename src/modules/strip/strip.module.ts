@@ -12,17 +12,13 @@ import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Subscriptions,
-      User,
-      PerPostPayment   
-    ]),
+    TypeOrmModule.forFeature([Subscriptions, User, PerPostPayment]),
     ConfigModule.forRoot(),
     HttpModule,
     AuthModule,
   ],
   controllers: [PaymentController],
   providers: [StripeService, CustomMailerService],
-  exports: [StripeService]
+  exports: [StripeService],
 })
 export class SubscriptionModule {}

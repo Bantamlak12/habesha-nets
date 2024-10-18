@@ -29,12 +29,11 @@ export class StripeService {
   // Create a checkout session
   async createCheckoutSession(
     planId: string,
-    userId: string
+    userId: string,
   ): Promise<Stripe.Checkout.Session> {
     try {
       const price = await this.stripe.prices.retrieve(planId);
 
-      // Determine the billing period based on the price object's interval and interval_count
       let billingPeriod = '';
       if (
         price.recurring?.interval === 'month' &&
@@ -55,18 +54,17 @@ export class StripeService {
         billingPeriod = `${price.recurring?.interval_count} ${price.recurring?.interval}`;
       }
 
-      // Create the Checkout session with the selected plan
       const session = await this.stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'subscription',
         metadata: {
           planId: planId,
           BillingPeriod: billingPeriod,
-          userId: userId // Example of userId if needed
+          userId: userId,
         },
         line_items: [
           {
-            price: planId, // The Stripe Price ID for the selected plan
+            price: planId,
             quantity: 1,
           },
         ],
@@ -83,28 +81,29 @@ export class StripeService {
     }
   }
 
-  // Create a checkout session
-  // Create a checkout session for a one-time payment with full product information
-  async createCheckoutSessionOneTime(userId: string, descripiton: string, amount: number): Promise<Stripe.Checkout.Session> {
+  async createCheckoutSessionOneTime(
+    userId: string,
+    descripiton: string,
+    amount: number,
+  ): Promise<Stripe.Checkout.Session> {
     try {
-      // Create the Checkout session with the product details
       const session = await this.stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
         metadata: {
-          userId: userId // Example of userId if needed
+          userId: userId,
         },
         line_items: [
           {
             price_data: {
-              currency: 'USD', // Specify the currency (e.g., 'usd')
+              currency: 'USD',
               product_data: {
-                name: 'Per Post Payment', // Name of the product
-                description: 'One-time payment for the selected product', // Description of the product
+                name: 'Per Post Payment',
+                description: 'One-time payment for the selected product',
               },
               unit_amount: amount * 100,
             },
-            quantity: 1, // Quantity of the product
+            quantity: 1,
           },
         ],
         success_url:
@@ -182,25 +181,26 @@ export class StripeService {
     amountPaid: number;
     userId: string;
     status: string;
-    description: string,
+    description: string;
     mode: string;
   }): Promise<void> {
-    const { customerId, amountPaid, userId, status, description, mode } = paymentData;
+    const { customerId, amountPaid, userId, status, description, mode } =
+      paymentData;
 
-    // Create a new instance of the OneTimePayment entity
     const oneTimePayment = this.perpostRepository.create({
       customerId,
       amountPaid,
       userId,
       status,
       description,
-      mode,  // mode will be 'payment' for one-time payments
+      mode,
     });
 
-    // Save the one-time payment record in the database
     await this.perpostRepository.save(oneTimePayment);
 
-    console.log(`Per Post payment of ${amountPaid} stored for customer ${customerId}`);
+    console.log(
+      `Per Post payment of ${amountPaid} stored for customer ${customerId}`,
+    );
   }
 
   async cancelSubscription(
@@ -209,13 +209,4 @@ export class StripeService {
     const subscription = await this.stripe.subscriptions.cancel(subscriptionId);
     return subscription;
   }
-
-  // async createPaymentIntent(amount: number, currency: string, description: string) {
-  //   return await this.stripe.paymentIntents.create({
-  //     amount: amount * 100, // Stripe requires amounts in cents
-  //     currency: currency,
-  //     payment_method_types: ['card'],
-  //     description: description,
-  //   });
-  // }
 }
