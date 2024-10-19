@@ -34,6 +34,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.6",
@@ -46,6 +47,7 @@
     "pg": "^8.12.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "stripe": "^17.2.0",
     "twilio": "^5.2.3",
     "typeorm": "^0.3.20"
   },
@@ -62,6 +64,7 @@
     "@types/nodemailer": "^6.4.15",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
+    "@types/stripe": "^8.0.417",
     "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

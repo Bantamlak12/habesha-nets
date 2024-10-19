@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CustomMailerService } from './mailer.service';
-import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Subscriptions } from 'src/modules/strip/strip.entity';
+import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Subscription]), ConfigModule],
+  imports: [TypeOrmModule.forFeature([Subscriptions, Subscription]), ConfigModule],
   providers: [CustomMailerService],
   exports: [CustomMailerService],
 })

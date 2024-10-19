@@ -25,6 +25,9 @@ import {
 import { Category } from './modules/category/entities/category.entity';
 import { Service } from './modules/category/entities/service.entity';
 import { Payment } from './modules/paypal/entities/per-post-payment.entity';
+import { SubscriptionModule } from './modules/strip/strip.module';
+import { Subscriptions } from './modules/strip/strip.entity';
+import { PerPostPayment } from './modules/strip/strip.perpost.entity';
 
 @Module({
   imports: [
@@ -48,6 +51,7 @@ import { Payment } from './modules/paypal/entities/per-post-payment.entity';
           Product,
           OAuth2Token,
           Subscription,
+          Subscriptions,
           ResetTokens,
           JobPost,
           RentalPost,
@@ -55,12 +59,13 @@ import { Payment } from './modules/paypal/entities/per-post-payment.entity';
           Category,
           Service,
           Payment,
+          PerPostPayment
         ],
         synchronize: true,
-        ssl:
-          process.env.NODE_ENV === 'development'
-            ? { rejectUnauthorized: false }
-            : { rejectUnauthorized: true },
+        ssl: false
+          // process.env.NODE_ENV === 'development'
+          //   ? { rejectUnauthorized: false }
+          //   : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
@@ -70,6 +75,7 @@ import { Payment } from './modules/paypal/entities/per-post-payment.entity';
     UploadModule,
     PostModule,
     CategoryModule,
+    SubscriptionModule
   ],
   controllers: [AppController],
   providers: [AppService],

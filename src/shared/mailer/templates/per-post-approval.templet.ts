@@ -1,8 +1,8 @@
 export function perPostPayemntConformationEmail(
     companyName: string,
-    year: number,
     userName: string,
-    transaction_id: string,
+    status: string,
+    description: string,
     date: string,
     totalamount: string,
     currency: string,
@@ -50,10 +50,10 @@ return `<!DOCTYPE html>
         
         <h3>Payment Details:</h3>
         <ul>
-            <li><strong>Payment ID:</strong> ${transaction_id}</li>
+            <li><strong>Payment Status:</strong> ${status}</li>
             <li><strong>Amount:</strong> ${totalamount}</li>
             <li><strong>Currency:</strong> ${currency}</li>
-            <li><strong>Description:</strong> </li>
+            <li><strong>Description:</strong>${description} </li>
             <li><strong>Transaction Date:</strong> ${date}</li>
         </ul>
 
@@ -63,11 +63,9 @@ return `<!DOCTYPE html>
 
         <div class="footer">
             <p>Best regards,<br>
-            [Your Name]<br>
-            [Your Position]<br>
             ${companyName}<br>
-            [Your Company Phone Number]<br>
-            [Your Company Email Address]<br>
+             <br>  [240] 605-7615.<br>
+            <a href="mailto:support@example.com">info@habeshanets.com</a><br>
             [Your Company Website URL]</p>
         </div>
     </div>

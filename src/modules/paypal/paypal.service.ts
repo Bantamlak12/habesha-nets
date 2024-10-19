@@ -482,36 +482,38 @@ export class PaypalService {
     }
   }
 
-  async createSubscription(parameterId: number, userId: string) {
+  async createSubscription(subscriptionID: string, userId: string) {
     let subscriptionPlan: string | null;
 
-    let subscriptionId: string | null;
-    const subscriptionIds = (await this.billingRepo.find()).map(
-      (billing) => billing.id,
-    );
+    const subscriptionId = await this.billingRepo.findOne({
+      where: { id: subscriptionID },
+      select: ['id', 'interval_count', 'interval_unit'],
+    });
+
+    if (!subscriptionId) {
+      throw new Error('Subscription plan not found.');
+    }
 
     const user = await this.userRepo.findOne({
       where: { id: userId },
     });
 
-    if (parameterId === 1) {
-      subscriptionId = subscriptionIds[0];
-      subscriptionPlan = 'monthly';
-    } else if (parameterId === 2) {
-      subscriptionId = subscriptionIds[1];
-      subscriptionPlan = 'six-month';
-    } else if (parameterId === 3) {
-      subscriptionId = subscriptionIds[2];
-      subscriptionPlan = 'yearly';
-    } else if (parameterId == 4) {
-      subscriptionId = subscriptionIds[3];
-      subscriptionPlan = 'per-post';
+    if (subscriptionId.interval_unit === 'MONTH') {
+      if (subscriptionId.interval_count === 1) {
+        subscriptionPlan = 'Monthly';
+      } else if (subscriptionId.interval_count === 6) {
+        subscriptionPlan = 'Six Monthly';
+      }
+    } else if (subscriptionId.interval_unit === 'YEAR') {
+      if (subscriptionId.interval_count === 1) {
+        subscriptionPlan = 'Yearly';
+      }
     } else {
-      throw new BadRequestException('incorrect URL Request');
+      throw new Error('Unsupported interval unit or count.');
     }
 
     const requestBody = {
-      plan_id: subscriptionId,
+      plan_id: subscriptionId.id,
       quantity: '1',
       subscriber: {
         name: { given_name: user.firstName, surname: user.lastName },

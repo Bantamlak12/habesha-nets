@@ -5,19 +5,19 @@ import { Transporter } from 'nodemailer';
 import Mail from 'nodemailer/lib/mailer';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Subscription } from 'src/modules/paypal/entities/subscription.entity';
 import { subscriptionConfirmationEmail } from 'src/shared/mailer/templates/subscription.template';
 import { subscriptionCancelEmail } from './templates/subscription-cancel.template';
 import { subscriptionPayemntConformationEmail } from './templates/subscription-payemnt_conformation';
 import { perPostPayemntConformationEmail } from './templates/per-post-approval.templet';
+import { Subscriptions } from 'src/modules/strip/strip.entity';
 
 @Injectable()
 export class CustomMailerService {
   private transporter: Transporter;
 
   constructor(
-    @InjectRepository(Subscription)
-    private readonly subscriptionRepo: Repository<Subscription>,
+    @InjectRepository(Subscriptions)
+    private readonly subscriptionRepo: Repository<Subscriptions>,
     private config: ConfigService,
   ) {
     this.transporter = nodemailer.createTransport({
@@ -53,10 +53,10 @@ export class CustomMailerService {
     status: string,
     userEmail: string,
     totalAmount: string,
-    createTime: Date,
+    createTime: string,
     currency: string,
     subscriptionPlan: string,
-    nextBillingDate: Date,
+    nextBillingDate: string,
   ) {
     const emailBody = subscriptionConfirmationEmail(
       'Habesha Nets',
@@ -87,7 +87,7 @@ export class CustomMailerService {
       new Date().getFullYear(),
       `${userName}`,
       `${totalAmount}`,
-      `${update_time}`,
+      new Date(update_time),
       `${status}`,
       `$${currency}`,
     );
@@ -116,24 +116,25 @@ export class CustomMailerService {
       `$${currency}`,
     );
 
-    const subject = 'Subscription Payment Conformation';
+    const subject = 'Payment Conformation';
 
     await this.sendEmail(userEmail, subject, emailBody);
   }
 
   async perPostPayemntConformationEmail(
     userName: string,
-    transaction_id: string,
-    amount: string,
+    status: string,
+    amount: number,
     userEmail: string,
+    description: string,
     date: Date,
     currency: string,
   ) {
     const emailBody = perPostPayemntConformationEmail(
       'Habesha Nets',
-      new Date().getFullYear(),
       `${userName}`,
-      `${transaction_id}`,
+      `${status}`,
+      `${description}`,
       `${date}`,
       `${amount}`,
       `$${currency}`,

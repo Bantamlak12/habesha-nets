@@ -28,7 +28,7 @@ import { Payment } from './entities/per-post-payment.entity';
     AuthModule,
   ],
   controllers: [PaypalController],
-  providers: [PaypalService, CustomMailerService],
+  providers: [PaypalService],
   exports: [PaypalService],
 })
 export class PaypalModule {}
