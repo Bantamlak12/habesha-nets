@@ -19,7 +19,7 @@ export class StripeService {
     private perpostRepository: Repository<PerPostPayment>,
   ) {
     this.stripe = new Stripe(
-      'sk_test_51PryRTP3IH6zcTUbpZZEIaF4jXzIMlI3fAJXgu5Uo8ecwiuobNf8lDTc2QJPKmp38PuHsq6jBzi1ZgEoqKJVnrQu00jMmfnuid',
+      process.env.STRIPE_SECRET_KEY,
       {
         apiVersion: null,
       },
@@ -68,8 +68,7 @@ export class StripeService {
             quantity: 1,
           },
         ],
-        success_url:
-          'https://yourwebsite.com/success?session_id={CHECKOUT_SESSION_ID}',
+        success_url: 'http://localhost:3001/signin',
         cancel_url: 'https://yourwebsite.com/cancel',
       });
       console.log('session plan id', session.metadata.planId);
@@ -83,7 +82,7 @@ export class StripeService {
 
   async createCheckoutSessionOneTime(
     userId: string,
-    descripiton: string,
+    title: string,
     amount: number,
   ): Promise<Stripe.Checkout.Session> {
     try {
@@ -99,15 +98,14 @@ export class StripeService {
               currency: 'USD',
               product_data: {
                 name: 'Per Post Payment',
-                description: 'One-time payment for the selected product',
+                description: title,
               },
               unit_amount: amount * 100,
             },
             quantity: 1,
           },
         ],
-        success_url:
-          'https://yourwebsite.com/success?session_id={CHECKOUT_SESSION_ID}',
+        success_url: 'http://localhost:3001/signin',
         cancel_url: 'https://yourwebsite.com/cancel',
       });
 

@@ -87,7 +87,7 @@ export class CustomMailerService {
       new Date().getFullYear(),
       `${userName}`,
       `${totalAmount}`,
-      `${update_time}`,
+      new Date(update_time),
       `${status}`,
       `$${currency}`,
     );

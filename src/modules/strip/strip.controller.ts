@@ -34,14 +34,14 @@ export class PaymentController {
   ) {}
 
   @Post('create-checkout-session')
-  // @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async createCheckoutSession(
     @Body() body: any,
     @Request() req: ExpressRequest,
+    @Response() res: ExpressResponse,
   ) {
     const { planId } = body;
-    // const userId  = req.user['sub'];
-    const userId = 'fd5ba9e8-17f3-4fd0-9cd1-a913e1f04e0c';
+    const userId = req.user['sub'];
 
     if (!planId) {
       throw new HttpException('No plan selected', HttpStatus.BAD_REQUEST);
@@ -56,19 +56,30 @@ export class PaymentController {
       const redirectURL = session.url;
       console.log('subscripto url', redirectURL);
 
-      return {
+      return res.status(HttpStatus.OK).json({
         status: 'success',
-        statusCode: 201,
-        redirectUrl: redirectURL,
-      };
+        statusCode: 200,
+        data: {
+          redirectUrl: redirectURL,
+        },
+      });
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
   @Post('cancel-subscription')
-  async cancelSubscription(@Body() body: { subscriptionId: string }) {
-    const { subscriptionId } = body;
+  @UseGuards(JwtAuthGuard)
+  async cancelSubscription(@Body() body: any, @Request() req: ExpressRequest) {
+    const { title } = body;
+    const userId = req.user['sub'];
+
+    const userDetail = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['subscriptionId'],
+    });
+
+    const { subscriptionId } = userDetail;
 
     if (!subscriptionId) {
       throw new HttpException(
@@ -93,12 +104,13 @@ export class PaymentController {
   }
 
   @Post('create-checkout-session-One-time')
+  @UseGuards(JwtAuthGuard)
   async createCheckoutSessionOnetime(
     @Body() body: { description: string; amount: number },
+    @Request() req: ExpressRequest,
   ) {
     try {
-      // const userId  = req.user['sub'];
-      const userId = 'fd5ba9e8-17f3-4fd0-9cd1-a913e1f04e0c';
+      const userId = req.user['sub'];
 
       const session = await this.stripeService.createCheckoutSessionOneTime(
         userId,
@@ -122,9 +134,8 @@ export class PaymentController {
     @Response() response: ExpressResponse,
   ) {
     const sig = request.headers['stripe-signature'];
-    // process.env.STRIPE_WEBHOOK_SECRET
 
-    const endpointSecret = 'whsec_TDdPLwOXWIe340ikelI0hhvZbrCNzIHf';
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     let event: Stripe.Event;
 
@@ -179,7 +190,7 @@ export class PaymentController {
     const userId = session.metadata.userId;
     const mode = session.mode;
 
-    console.log('Mode of Subscription', session.mode);
+    console.log('Mode of Subscription', subscriptionId);
 
     if (mode === 'subscription') {
       await this.stripeService.storeSubscription({
@@ -298,6 +309,7 @@ export class PaymentController {
       await this.userRepository.update(
         { id: userId },
         {
+          subscriptionId: subscriptionId,
           subscriptionUpdated: new Date(),
           subscriptionStatus: 'subscribed',
           subscriptionPlan: billingPeriod,
@@ -335,10 +347,10 @@ export class PaymentController {
 
     const user = await this.subRepo.findOne({
       where: { subscriptionId: subscriptionId },
-      select: ['userId'],
+      select: ['userId', 'amountPaid'],
     });
 
-    const { userId: userId } = user;
+    const { userId: userId, amountPaid: amountPaid } = user;
 
     await this.userRepository.update(
       { id: userId },
@@ -362,7 +374,7 @@ export class PaymentController {
       firstName,
       'CANCELLED',
       email,
-      '20',
+      amountPaid.toString(),
       updateDate,
       'USD',
     );

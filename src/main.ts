@@ -10,7 +10,7 @@ async function bootstrap() {
   app.use('/subscription/webhook', bodyParser.raw({ type: 'application/json' }));
 
   app.enableCors({
-    origin: 'http://localhost:3001',
+    origin: ['https://tzvsnwkl-3000.uks1.devtunnels.ms/', 'http://localhost:3001'],
     credentials: true,
   });
 

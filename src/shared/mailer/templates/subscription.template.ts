@@ -71,7 +71,7 @@ export function subscriptionConfirmationEmail(
               <p>Dear ${userName},</p>
               <p>Thank you for your recent payment of <span class="highlight">${paymentAmount} ${currenct}</span>. We’re pleased to confirm that your subscription to the <span class="highlight">${subscriptionPlan}</span> has been successfully processed on ${formattedDate}.</p>
               <p>Your subscription is now active and will be renewed on <span class="highlight">${nextBillingDate}</span>.</p>
-              <p>If you have any questions or need further assistance, feel free to reach out to our support team at  <a href="mailto:support@example.com">support@example.com</a><br>Phone: +1-800-123-456.</p>
+              <p>If you have any questions or need further assistance, feel free to reach out to our support team at  <a href="mailto:support@example.com">info@habeshanets.com</a><br>Phone:  [240] 605-7615.</p>
               <p>Best Regards,<br>The ${companyName} Team</p>
           </div>
           <div class="footer">

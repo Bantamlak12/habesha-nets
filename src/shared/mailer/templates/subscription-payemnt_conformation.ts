@@ -57,6 +57,7 @@ export function subscriptionPayemntConformationEmail(
         <p><strong>Date:</strong> ${date}</p>
         
         <p>Your subscription is now active. If you have any questions or need assistance, please contact us.</p>
+        <p>Email: <a href="mailto:support@example.com">info@habeshanets.com</a><br>Phone:  [240] 605-7615</p>
         
         <p>Thank you for your business!</p>
         <p>Best Regards,<br>The ${companyName} Team</p>

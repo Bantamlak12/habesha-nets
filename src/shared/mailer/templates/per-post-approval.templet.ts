@@ -63,11 +63,9 @@ return `<!DOCTYPE html>
 
         <div class="footer">
             <p>Best regards,<br>
-            [Your Name]<br>
-            [Your Position]<br>
             ${companyName}<br>
-            [Your Company Phone Number]<br>
-            [Your Company Email Address]<br>
+             <br>  [240] 605-7615.<br>
+            <a href="mailto:support@example.com">info@habeshanets.com</a><br>
             [Your Company Website URL]</p>
         </div>
     </div>
