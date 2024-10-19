@@ -1,12 +1,13 @@
 import { plainToClass, Transform, Type } from 'class-transformer';
 import { IsOptional, IsString, ValidateNested } from 'class-validator';
 import { AddressDto } from './address.dto';
-import { BudgetRangeDto } from './bugget-range.dto';
 
-export class PropertyRenterDto {
+export class UpdatePropertyOwnerDto {
+  @IsOptional()
   @IsString()
   firstName: string;
 
+  @IsOptional()
   @IsString()
   lastName: string;
 
@@ -18,9 +19,11 @@ export class PropertyRenterDto {
   @IsString()
   phoneNumber: string;
 
+  @IsOptional()
   @IsString()
   bio: string;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
   @Transform(({ value }) => {
@@ -36,14 +39,7 @@ export class PropertyRenterDto {
   @IsString()
   preferredContactMethod: 'Phone' | 'Email' | 'SMS';
 
-  @ValidateNested()
-  @Type(() => BudgetRangeDto)
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      const parsedValue = JSON.parse(value);
-      return plainToClass(BudgetRangeDto, parsedValue);
-    }
-    return value;
-  })
-  budgetRange: BudgetRangeDto;
+  @IsOptional()
+  @IsString()
+  propertyType: string;
 }

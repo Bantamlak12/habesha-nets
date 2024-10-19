@@ -3,10 +3,12 @@ import { IsOptional, IsString, ValidateNested } from 'class-validator';
 import { AddressDto } from './address.dto';
 import { BudgetRangeDto } from './bugget-range.dto';
 
-export class PropertyRenterDto {
+export class UpdatePropertyRenterDto {
+  @IsOptional()
   @IsString()
   firstName: string;
 
+  @IsOptional()
   @IsString()
   lastName: string;
 
@@ -18,9 +20,11 @@ export class PropertyRenterDto {
   @IsString()
   phoneNumber: string;
 
+  @IsOptional()
   @IsString()
   bio: string;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
   @Transform(({ value }) => {
@@ -36,6 +40,7 @@ export class PropertyRenterDto {
   @IsString()
   preferredContactMethod: 'Phone' | 'Email' | 'SMS';
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => BudgetRangeDto)
   @Transform(({ value }) => {

@@ -327,18 +327,19 @@ export class PaypalController {
       { id: userId },
       { subscriptionUpdated: new Date(), subscriptionStatus: 'subscribed' },
     );
-    // await this.mailerservice.sendEmailNotification(
-    //   userName,
-    //   'Activated',
-    //   userEmail,
-    //   totalAmount,
-    //   createTime,
-    //   currency,
-    //   subscriptionPlan,
-    //   nextBillingDate,
-    // );
 
     await this.userRepo.update(userId, { isProfileCompleted: true });
+
+    await this.mailerservice.sendEmailNotification(
+      userName,
+      'Activated',
+      userEmail,
+      totalAmount,
+      createTime,
+      currency,
+      subscriptionPlan,
+      nextBillingDate,
+    );
   }
 
   // private async handleSubscriptionCancelled(resource) {

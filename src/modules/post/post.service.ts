@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { JobPost } from './entities/employer-post.entity';
+import { LessThan, Repository } from 'typeorm';
+import { JobPost } from './entities/job-post.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { RentalPost } from './entities/rental-post.entity';
+import { RentalPost, RentalPostImage } from './entities/rental-post.entity';
 import { User } from '../users/entities/users.entity';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class PostService {
@@ -15,32 +16,15 @@ export class PostService {
     private readonly jobPostRepo: Repository<JobPost>,
     @InjectRepository(RentalPost)
     private readonly rentalPostRepo: Repository<RentalPost>,
+    @InjectRepository(RentalPostImage)
+    private readonly rentalPostImageRepo: Repository<RentalPostImage>,
     private readonly uploadService: UploadService,
   ) {}
 
-  async queryHelper(
-    repo: Repository<any>,
-    page: number,
-    limit: number,
-    category: string,
-  ) {
-    const query = repo
-      .createQueryBuilder('JobPost')
-      .leftJoin('JobPost.postedBy', 'user')
-      .addSelect(['user.firstName', 'user.lastName'])
-      .orderBy('JobPost.createdAt', 'DESC');
-
-    if (category) {
-      query.andWhere('JobPost.category = :category', { category });
-    }
-
-    const [posts, total] = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    const totalPages = Math.ceil(total / limit);
-    return { posts, totalPages };
+  @Cron('0 0 1 * *') // Runs at midnight on 1st of every month
+  async cleanupExpiredResetTokens(): Promise<void> {
+    await this.jobPostRepo.delete({ status: 'closed' });
+    await this.rentalPostRepo.delete({ postStatus: 'rented' });
   }
 
   async EmployerCreatePost(id: string, body: any) {
@@ -50,7 +34,20 @@ export class PostService {
     }
 
     const newPost = this.jobPostRepo.create({
-      ...body,
+      title: body.title,
+      category: body.category,
+      description: body.description,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      remote: body.remote,
+      hourlyRate: body.hourlyRate,
+      startTime: body.schedule.start,
+      endTime: body.schedule.end,
+      preferredHours: body.schedule.preferredHours,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
       postedBy: user,
     });
 
@@ -100,25 +97,62 @@ export class PostService {
   }
 
   async getAllRentalLists(page: number, limit: number, category: string) {
-    return await this.queryHelper(this.rentalPostRepo, page, limit, category);
+    const query = this.rentalPostRepo
+      .createQueryBuilder('RentalPost')
+      .leftJoin('RentalPost.postedBy', 'user')
+      .leftJoinAndSelect('RentalPost.images', 'images')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .orderBy('RentalPost.createdAt', 'DESC');
+
+    if (category) {
+      query.andWhere('RentalPost.rentalType = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
   async getAllJobLists(page: number, limit: number, category: string) {
-    return await this.queryHelper(this.jobPostRepo, page, limit, category);
+    const query = this.jobPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .orderBy('JobPost.createdAt', 'DESC');
+
+    if (category) {
+      query.andWhere('JobPost.category = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
   async employerUpdatePost(body: any, id: string) {
     const updatedPost = await this.jobPostRepo.update(id, {
       title: body.title,
-      description: body.description,
-      jobType: body.jobType,
-      companyName: body.companyName,
-      location: body.location,
-      salary: body.salary,
-      requiredSkills: body.requiredSkills,
-      experienceLevel: body.experienceLevel,
       category: body.category,
-      applicationDeadline: body.applicationDeadline,
+      description: body.description,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      remote: body.remote,
+      hourlyRate: body.hourlyRate,
+      startTime: body.schedule.start,
+      endTime: body.schedule.end,
+      preferredHours: body.schedule.preferredHours,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
       status: body.status,
     });
 
@@ -157,8 +191,22 @@ export class PostService {
     }
 
     const newPost = this.rentalPostRepo.create({
-      ...body,
-      images: imageUrl,
+      title: body.title,
+      rentalType: body.rentalType,
+      description: body.description,
+      price: body.price,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      images: imageUrl.map((url) =>
+        this.rentalPostImageRepo.create({ imageUrl: url }),
+      ),
+      availableFrom: body.availabilityDate.from,
+      availableUntil: body.availabilityDate.until,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
+      postStatus: body.postStatus,
       postedBy: user,
     });
     await this.rentalPostRepo.save(newPost);
@@ -175,7 +223,21 @@ export class PostService {
   }
 
   async rentalUpdate(id: string, body: any) {
-    const updatedPost = await this.jobPostRepo.update(id, { ...body });
+    const updatedPost = await this.rentalPostRepo.update(id, {
+      title: body.title,
+      rentalType: body.rentalType,
+      description: body.description,
+      price: body.price,
+      country: body.location.country,
+      city: body.location.city,
+      street: body.location.street,
+      postalCode: body.location.postalCode,
+      availableFrom: body.availabilityDate.from,
+      availableUntil: body.availabilityDate.until,
+      phoneNumber: body.contactInfo.phoneNumber,
+      email: body.contactInfo.email,
+      postStatus: body.postStatus,
+    });
     return updatedPost.affected;
   }
 

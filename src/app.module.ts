@@ -16,9 +16,12 @@ import { OAuth2Token } from './modules/paypal/entities/token.entity';
 import { Subscription } from './modules/paypal/entities/subscription.entity';
 import { ResetTokens } from './modules/auth/entities/password-reset-token.entity';
 import { PostModule } from './modules/post/post.module';
-import { JobPost } from './modules/post/entities/employer-post.entity';
+import { JobPost } from './modules/post/entities/job-post.entity';
 import { CategoryModule } from './modules/category/category.module';
-import { RentalPost } from './modules/post/entities/rental-post.entity';
+import {
+  RentalPost,
+  RentalPostImage,
+} from './modules/post/entities/rental-post.entity';
 import { Category } from './modules/category/entities/category.entity';
 import { Service } from './modules/category/entities/service.entity';
 import { Payment } from './modules/paypal/entities/per-post-payment.entity';
@@ -52,6 +55,7 @@ import { PerPostPayment } from './modules/strip/strip.perpost.entity';
           ResetTokens,
           JobPost,
           RentalPost,
+          RentalPostImage,
           Category,
           Service,
           Payment,

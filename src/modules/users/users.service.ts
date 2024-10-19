@@ -13,84 +13,76 @@ export class UsersService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async findAllEmploy(ID: string): Promise<User[]> {
-    try {
-      const employer = await this.userRepo.findOneBy({ id: ID });
+  async findAllserviceProviders(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.userType = :userType', {
+        userType: 'serviceProvider',
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-      if (employer.userType === 'service provider') {
-        const employersList = await this.userRepo.findBy({
-          userType: 'employer',
-        });
+    const [employees, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
-        return employersList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    const totalPages = Math.ceil(total / limit);
+
+    return { employees, totalPages };
   }
 
-  async findAllOwner(ID: string): Promise<User[]> {
-    try {
-      const owner = await this.userRepo.findOneBy({ id: ID });
+  async findAllPropertyRenters(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.serviceCategory = :serviceCategory', {
+        serviceCategory: 'Rentals',
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-      if (owner.userType === 'service provider') {
-        const ownerList = await this.userRepo.findBy({
-          serviceCategory: 'Rentals',
-        });
+    const [renters, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
-        return ownerList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    const totalPages = Math.ceil(total / limit);
+
+    return { renters, totalPages };
   }
 
-  async findAllBabySitter(ID: string): Promise<User[]> {
-    try {
-      const babysitter = await this.userRepo.findOneBy({ id: ID });
+  async findAllBabySitters(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.serviceTitle IN (:...serviceTitle)', {
+        serviceTitle: ['Babysitter', 'Nanny', 'Date Night Babysitter'],
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-      if (babysitter.userType === 'service provider') {
-        const babysitterList = await this.userRepo.findBy({
-          serviceTitle: In(['Babysitter', 'Nanny', 'Date night babysitter']),
-        });
+    const [babysitters, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
-        return babysitterList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    const totalPages = Math.ceil(total / limit);
+
+    return { babysitters, totalPages };
   }
 
-  async findAllCareGiver(ID: string): Promise<User[]> {
-    try {
-      const babysitter = await this.userRepo.findOneBy({ id: ID });
+  async findAllCareGivers(page: number, limit: number) {
+    const query = this.userRepo
+      .createQueryBuilder('user')
+      .where('user.serviceTitle IN (:...serviceTitle)', {
+        serviceTitle: ['Eldercare', 'Dog Walker', 'Special Needs Caregiver'],
+      })
+      .orderBy('user.createdAt', 'DESC');
 
-      if (babysitter.userType === 'service provider') {
-        const babysitterList = await this.userRepo.findBy({
-          serviceTitle: In([
-            'Eldercare',
-            'Dog walker',
-            'Special needs caregiver',
-          ]),
-        });
+    const [caregivers, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
-        return babysitterList;
-      } else {
-        return [];
-      }
-    } catch (error) {
-      console.error('Error checking user type:', error);
-      throw error;
-    }
+    const totalPages = Math.ceil(total / limit);
+
+    return { caregivers, totalPages };
   }
 
   async updateEmployerProfile(
@@ -183,6 +175,140 @@ export class UsersService {
     });
 
     await this.userRepo.update(userId, { isProfileCompleted: true });
+
+    return updatedUser;
+  }
+
+  async updatePropertyOwnersProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      secondaryEmail: user.secondaryEmail,
+      secondaryPhoneNumber: user.secondaryPhoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
+      propertyType: body.propertyType,
+    });
+
+    return updatedUser;
+  }
+
+  async updatePropertyRenterProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      secondaryEmail: user.secondaryEmail,
+      secondaryPhoneNumber: user.secondaryPhoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
+      budgetRange: body.budgetRange,
+    });
+
+    return updatedUser;
+  }
+
+  async updateBabySitterFinderProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      secondaryEmail: user.secondaryEmail,
+      secondaryPhoneNumber: user.secondaryPhoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
+    });
+
+    return updatedUser;
+  }
+
+  async updateCareGiverFinderProfile(
+    userId: string,
+    body: any,
+    profileImg: Express.Multer.File,
+  ) {
+    // Check if the user exists
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    let profileURL: string | undefined;
+    if (profileImg && process.env.NODE_ENV === 'development') {
+      profileURL = await this.uploadService.uploadFile(profileImg, 'images');
+    } else if (profileImg && process.env.NODE_ENV === 'production') {
+      profileURL = await this.uploadService.uploadFileToS3(profileImg);
+    }
+
+    // Update the fields
+    const updatedUser = await this.userRepo.update(userId, {
+      firstName: capitalizeString(body.firstName),
+      lastName: capitalizeString(body.lastName),
+      secondaryEmail: user.secondaryEmail,
+      secondaryPhoneNumber: user.secondaryPhoneNumber,
+      bio: body.bio,
+      profilePicture: profileURL,
+      preferredContactMethod: body.preferredContactMethod,
+      address: body.address,
+    });
 
     return updatedUser;
   }

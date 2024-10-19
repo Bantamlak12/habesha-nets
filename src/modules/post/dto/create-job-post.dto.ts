@@ -1,50 +1,52 @@
 import {
-  IsArray,
-  IsDateString,
+  IsBoolean,
+  IsDecimal,
   IsIn,
+  IsNotEmpty,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { LocationDto } from './location.dto';
-import { SalaryDto } from './salary.dto';
+import { Location } from './location.dto';
 import { Type } from 'class-transformer';
+import { ContactInfo } from './contact.dto';
+import { Schedule } from './schedule.dto';
 
-export class EmployeeCreatePostDto {
+export class CreatePostDto {
   @IsString()
+  @IsNotEmpty()
   title: string;
 
   @IsString()
-  description: string;
-
-  @IsString()
-  jobType: string;
-
-  @IsString()
-  companyName: string;
-
-  @ValidateNested()
-  @Type(() => LocationDto)
-  location: LocationDto;
-
-  @ValidateNested()
-  @Type(() => SalaryDto)
-  salary: SalaryDto;
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  requiredSkills: string[];
-
-  @IsString()
-  experienceLevel: string;
-
-  @IsString()
+  @IsNotEmpty()
   category: string;
 
-  @IsDateString()
-  applicationDeadline: Date;
+  @IsString()
+  @IsNotEmpty()
+  description: string;
 
+  @ValidateNested()
+  @Type(() => Location)
+  location: Location;
+
+  @IsBoolean()
+  @IsOptional()
+  remote?: boolean;
+
+  @IsDecimal()
+  @IsNotEmpty()
+  hourlyRate: number;
+
+  @ValidateNested()
+  @Type(() => Schedule)
+  schedule?: Schedule;
+
+  @ValidateNested()
+  @Type(() => ContactInfo)
+  contactInfo: ContactInfo;
+
+  @IsOptional()
+  @IsString()
   @IsIn(['active', 'closed'])
   status: 'active' | 'closed';
 }

@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   PrimaryGeneratedColumn,
   ManyToOne,
+  Index,
 } from 'typeorm';
 
 @Entity('job-posts')
@@ -16,40 +17,47 @@ export class JobPost {
   @Column()
   title: string;
 
-  @Column('text')
-  description: string;
-
-  @Column()
-  jobType: string;
-
-  @Column()
-  companyName: string;
-
-  @Column({ type: 'jsonb' })
-  location: {
-    city?: string;
-    country?: string;
-    remote?: boolean;
-  };
-
-  @Column({ type: 'jsonb' })
-  salary: {
-    min: number;
-    max: number;
-  };
-
-  @Column({ type: 'jsonb', nullable: true })
-  requiredSkills: string[];
-
-  @Column()
-  experienceLevel: string;
-
   @Column()
   category: string;
 
-  @Column()
-  applicationDeadline: Date;
+  @Column('text')
+  description: string;
 
+  @Column({ nullable: true })
+  country: string;
+
+  @Column({ nullable: true })
+  city: string;
+
+  @Column({ nullable: true })
+  street: string;
+
+  @Column({ nullable: true })
+  postalCode: string;
+
+  @Column({ nullable: true })
+  remote: boolean;
+
+  @Index()
+  @Column()
+  hourlyRate: number;
+
+  @Column({ nullable: true })
+  startTime: Date;
+
+  @Column({ nullable: true })
+  endTime: Date;
+
+  @Column({ nullable: true })
+  preferredHours: string;
+
+  @Column({ nullable: true })
+  phoneNumber: string;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Index()
   @Column({ type: 'enum', enum: ['active', 'closed'], default: 'active' })
   status: 'active' | 'closed';
 

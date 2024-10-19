@@ -8,8 +8,10 @@ import {
   MaxFileSizeValidator,
   ParseFilePipe,
   Patch,
+  Query,
   Request,
   Response,
+  UnauthorizedException,
   UploadedFile,
   UploadedFiles,
   UseGuards,
@@ -27,81 +29,147 @@ import {
   FileInterceptor,
 } from '@nestjs/platform-express';
 import { updateServiceProvidersDto } from '../auth/dto/update-service-provider-profile.dto';
+import { UpdatePropertyOwnerDto } from '../auth/dto/update-property-owner-profile.dto';
+import { UpdatePropertyRenterDto } from '../auth/dto/update-property-renter.dto';
+import { UpdateBabySitterFinderDto } from '../auth/dto/update-baby-sitter-finder-profile.dto';
 
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UsersService) {}
 
-  @Get('employee')
+  @Get('service-providers')
   @UseGuards(JwtAuthGuard)
-  async findAllEmploy(
+  async findAllServiceProviders(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
-    const ID = req.user?.['id'];
-    const Employeeys = await this.userService.findAllEmploy(ID);
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'employer') {
+      users = await this.userService.findAllserviceProviders(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.employees.map((user: any) => delete user.password);
+    }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: Employeeys.length,
+      Results: users.employees.length,
       statusCode: 200,
-      data: Employeeys,
-    });
-  }
-  //Get Owner
-
-  @Get('renter')
-  @UseGuards(JwtAuthGuard)
-  async findAllOwner(
-    @Response() res: ExpressResponse,
-    @Request() req: ExpressRequest,
-  ) {
-    const ID = req.user?.['id'];
-    const Owner = await this.userService.findAllOwner(ID);
-
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      results: Owner.length,
-      statusCode: 200,
-      data: Owner,
-    });
-  }
-
-  //Get Baby Sitter
-
-  @Get('babysitter')
-  @UseGuards(JwtAuthGuard)
-  async findAllBabySitter(
-    @Response() res: ExpressResponse,
-    @Request() req: ExpressRequest,
-  ) {
-    const ID = req.user?.['id'];
-    const BabySitter = await this.userService.findAllBabySitter(ID);
-
-    return res.status(HttpStatus.OK).json({
-      status: 'success',
-      results: BabySitter.length,
-      statusCode: 200,
-      data: BabySitter,
+      totalPages: users.totalPages,
+      data: users.employees,
     });
   }
 
-  //Get Care Giver
-
-  @Get('caregiver')
+  @Get('renters')
   @UseGuards(JwtAuthGuard)
-  async findAllCareGiver(
+  async findAllPropertyRenters(
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
-    const ID = req.user?.['id'];
-    const BabySitter = await this.userService.findAllCareGiver(ID);
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'propertyOwner') {
+      users = await this.userService.findAllPropertyRenters(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.renters.map((user: any) => delete user.password);
+    }
 
     return res.status(HttpStatus.OK).json({
       status: 'success',
-      results: BabySitter.length,
+      Results: users.renters.length,
       statusCode: 200,
-      data: BabySitter,
+      totalPages: users.totalPages,
+      data: users.renters,
+    });
+  }
+
+  @Get('baby-sitters')
+  @UseGuards(JwtAuthGuard)
+  async findAllBabySitters(
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'babySitterFinder') {
+      users = await this.userService.findAllBabySitters(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.babysitters.map((user: any) => delete user.password);
+    }
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      Results: users.babysitters.length,
+      statusCode: 200,
+      totalPages: users.totalPages,
+      data: users.babysitters,
+    });
+  }
+
+  @Get('care-givers')
+  @UseGuards(JwtAuthGuard)
+  async findAllCareGivers(
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    const userType = req.user?.['userType'];
+    let users: any;
+
+    if (userType === 'careGiverFinder') {
+      users = await this.userService.findAllCareGivers(page, limit);
+    }
+
+    if (!users) {
+      throw new UnauthorizedException(
+        'You are not authorized to access this route.',
+      );
+    }
+
+    if (users) {
+      users.caregivers.map((user: any) => delete user.password);
+    }
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      Results: users.caregivers.length,
+      statusCode: 200,
+      totalPages: users.totalPages,
+      data: users.caregivers,
     });
   }
 
@@ -109,7 +177,7 @@ export class UserController {
   @Patch('/employer/profile')
   @UseInterceptors(FileInterceptor('profilePicture'))
   @UseGuards(JwtAuthGuard)
-  async completeEmployerProfile(
+  async updateEmployerProfile(
     @Body() body: UpdateEmployerProfile,
     @Request() req: ExpressRequest,
     @Response() res: ExpressResponse,
@@ -151,7 +219,7 @@ export class UserController {
       { name: 'portfolioFiles', maxCount: 5 },
     ]),
   )
-  async completeServiceProvidersProfile(
+  async updateServiceProvidersProfile(
     @Body() body: updateServiceProvidersDto,
     @Response() res: ExpressResponse,
     @Request() req: ExpressRequest,
@@ -226,6 +294,214 @@ export class UserController {
       body,
       profilePicture,
       portfolioFiles,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have updated your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/property-owners/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async updatePropertyOwnersProfile(
+    @Body() body: UpdatePropertyOwnerDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+
+    if (userType !== 'propertyOwner') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.userService.updatePropertyOwnersProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have updated your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/property-renters/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async updatePropertyRenterProfile(
+    @Body() body: UpdatePropertyRenterDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'propertyRenter') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+    const user = await this.userService.updatePropertyRenterProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have updated your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/baby-sitter-finder/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async updateBabySitterFinderProfile(
+    @Body() body: UpdateBabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'babySitterFinder') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.userService.updateBabySitterFinderProfile(
+      id,
+      body,
+      profilePicture,
+    );
+
+    return res.status(HttpStatus.OK).json({
+      status: 'success',
+      statusCode: 200,
+      message: 'You have completed your profile',
+      rowAffected: user.affected,
+    });
+  }
+
+  @Patch('/care-giver-finder/profile')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'profilePicture', maxCount: 1 }]),
+  )
+  async completeCareGiverFinderProfile(
+    @Body() body: UpdateBabySitterFinderDto,
+    @Response() res: ExpressResponse,
+    @Request() req: ExpressRequest,
+    @UploadedFiles()
+    files?: {
+      profilePicture?: Express.Multer.File;
+    },
+  ) {
+    const profilePicture = files?.profilePicture?.[0];
+
+    // Check if profile picture did not exceed 2MB
+    if (profilePicture && profilePicture.size > 2 * 1024 * 1024) {
+      throw new BadRequestException(
+        'The size of the profile picture must not exceed 2MB.',
+      );
+    }
+
+    // Check if the uploaded file is image
+    if (profilePicture && !profilePicture.mimetype.match(/\/(jpeg|png|jpg)$/)) {
+      throw new BadRequestException(
+        'Only JPEG, PNG, and JPG formats are allowed for profile picture.',
+      );
+    }
+
+    const id = req.user['sub'];
+    const userType = req.user['userType'];
+    if (userType !== 'careGiverFinder') {
+      throw new BadRequestException(
+        `'${req.user['userType']}' can only complete their profile. You cannot edit any users profile.`,
+      );
+    }
+
+    const user = await this.userService.updateCareGiverFinderProfile(
+      id,
+      body,
+      profilePicture,
     );
 
     return res.status(HttpStatus.OK).json({
