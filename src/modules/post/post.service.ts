@@ -27,31 +27,6 @@ export class PostService {
     await this.rentalPostRepo.delete({ postStatus: 'rented' });
   }
 
-  async queryHelper(
-    repo: Repository<any>,
-    page: number,
-    limit: number,
-    category: string,
-  ) {
-    const query = repo
-      .createQueryBuilder('JobPost')
-      .leftJoin('JobPost.postedBy', 'user')
-      .addSelect(['user.firstName', 'user.lastName'])
-      .orderBy('JobPost.createdAt', 'DESC');
-
-    if (category) {
-      query.andWhere('JobPost.category = :category', { category });
-    }
-
-    const [posts, total] = await query
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    const totalPages = Math.ceil(total / limit);
-    return { posts, totalPages };
-  }
-
   async EmployerCreatePost(id: string, body: any) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) {
@@ -122,11 +97,44 @@ export class PostService {
   }
 
   async getAllRentalLists(page: number, limit: number, category: string) {
-    return await this.queryHelper(this.rentalPostRepo, page, limit, category);
+    const query = this.rentalPostRepo
+      .createQueryBuilder('RentalPost')
+      .leftJoin('RentalPost.postedBy', 'user')
+      .leftJoinAndSelect('RentalPost.images', 'images')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .orderBy('RentalPost.createdAt', 'DESC');
+
+    if (category) {
+      query.andWhere('RentalPost.rentalType = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
   async getAllJobLists(page: number, limit: number, category: string) {
-    return await this.queryHelper(this.jobPostRepo, page, limit, category);
+    const query = this.jobPostRepo
+      .createQueryBuilder('JobPost')
+      .leftJoin('JobPost.postedBy', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .orderBy('JobPost.createdAt', 'DESC');
+
+    if (category) {
+      query.andWhere('JobPost.category = :category', { category });
+    }
+
+    const [posts, total] = await query
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    return { posts, totalPages };
   }
 
   async employerUpdatePost(body: any, id: string) {
