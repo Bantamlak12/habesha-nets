@@ -37,6 +37,7 @@ export class PaypalController {
     @InjectRepository(BillingPlan)
     private readonly billingRepo: Repository<BillingPlan>,
     private readonly paypalService: PaypalService,
+    private readonly mailerservice: CustomMailerService,
   ) {}
 
   @Post('get-token')
@@ -313,6 +314,7 @@ export class PaypalController {
     const currency = resource.billing_info.last_payment.amount.currency_code;
     const createTime = resource.create_time;
     const nextBillingDate = new Date(resource.billing_info.next_billing_time);
+    const nextBillingDateString = nextBillingDate.toString();
     const subscriptionPlan = this.determineSubscriptionPlan(
       interval_unit,
       interval_count,
@@ -338,7 +340,7 @@ export class PaypalController {
       createTime,
       currency,
       subscriptionPlan,
-      nextBillingDate,
+      nextBillingDateString,
     );
   }
 
