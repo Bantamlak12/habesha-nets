@@ -12,7 +12,7 @@ import { AuthModule } from '../auth/auth.module';
 import { User } from '../users/entities/users.entity';
 import { Subscription } from './entities/subscription.entity';
 import { Payment } from './entities/per-post-payment.entity';
-import { Subscriptions } from '../strip/strip.entity';
+import { Subscriptions } from '../stripe/stripe.entity';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { Subscriptions } from '../strip/strip.entity';
       OAuth2Token,
       User,
       Payment,
-      Subscriptions
+      Subscriptions,
     ]),
     ConfigModule.forRoot(),
     HttpModule,

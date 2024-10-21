@@ -25,9 +25,9 @@ import {
 import { Category } from './modules/category/entities/category.entity';
 import { Service } from './modules/category/entities/service.entity';
 import { Payment } from './modules/paypal/entities/per-post-payment.entity';
-import { SubscriptionModule } from './modules/strip/strip.module';
-import { Subscriptions } from './modules/strip/strip.entity';
-import { PerPostPayment } from './modules/strip/strip.perpost.entity';
+import { SubscriptionModule } from './modules/stripe/stripe.module';
+import { Subscriptions } from './modules/stripe/stripe.entity';
+import { PerPostPayment } from './modules/stripe/stripe.perpost.entity';
 
 @Module({
   imports: [
@@ -59,13 +59,13 @@ import { PerPostPayment } from './modules/strip/strip.perpost.entity';
           Category,
           Service,
           Payment,
-          PerPostPayment
+          PerPostPayment,
         ],
         synchronize: true,
-        ssl: false
-          // process.env.NODE_ENV === 'development'
-          //   ? { rejectUnauthorized: false }
-          //   : { rejectUnauthorized: true },
+        ssl: false,
+        // process.env.NODE_ENV === 'development'
+        //   ? { rejectUnauthorized: false }
+        //   : { rejectUnauthorized: true },
       }),
     }),
     AuthModule,
@@ -75,7 +75,7 @@ import { PerPostPayment } from './modules/strip/strip.perpost.entity';
     UploadModule,
     PostModule,
     CategoryModule,
-    SubscriptionModule
+    SubscriptionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

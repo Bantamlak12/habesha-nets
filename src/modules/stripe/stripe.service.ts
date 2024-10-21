@@ -2,10 +2,10 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import Stripe from 'stripe';
 import { Repository } from 'typeorm';
-import { Subscriptions } from './strip.entity';
+import { Subscriptions } from './stripe.entity';
 import PaymentIntent from 'stripe';
 import { User } from '../users/entities/users.entity';
-import { PerPostPayment } from './strip.perpost.entity';
+import { PerPostPayment } from './stripe.perpost.entity';
 @Injectable()
 export class StripeService {
   public stripe: Stripe;
@@ -18,12 +18,9 @@ export class StripeService {
     @InjectRepository(PerPostPayment)
     private perpostRepository: Repository<PerPostPayment>,
   ) {
-    this.stripe = new Stripe(
-      process.env.STRIPE_SECRET_KEY,
-      {
-        apiVersion: null,
-      },
-    );
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: null,
+    });
   }
 
   // Create a checkout session
