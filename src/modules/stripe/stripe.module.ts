@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { StripeService } from '../strip/strip.service';
-import { PaymentController } from '../strip/strip.controller';
+import { StripeService } from './stripe.service';
+import { PaymentController } from './stripe.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Subscriptions } from './strip.entity';
+import { Subscriptions } from './stripe.entity';
 import { ConfigModule } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { AuthModule } from '../auth/auth.module';
 import { User } from '../users/entities/users.entity';
-import { PerPostPayment } from './strip.perpost.entity';
+import { PerPostPayment } from './stripe.perpost.entity';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';
 
 @Module({

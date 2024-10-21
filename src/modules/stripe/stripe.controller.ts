@@ -12,11 +12,11 @@ import {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from 'express';
-import { StripeService } from '../strip/strip.service';
+import { StripeService } from './stripe.service';
 import Stripe from 'stripe';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Subscriptions } from './strip.entity';
+import { Subscriptions } from './stripe.entity';
 import { User } from '../users/entities/users.entity';
 import { Repository } from 'typeorm';
 import { CustomMailerService } from 'src/shared/mailer/mailer.service';

@@ -9,7 +9,7 @@ import { subscriptionConfirmationEmail } from 'src/shared/mailer/templates/subsc
 import { subscriptionCancelEmail } from './templates/subscription-cancel.template';
 import { subscriptionPayemntConformationEmail } from './templates/subscription-payemnt_conformation';
 import { perPostPayemntConformationEmail } from './templates/per-post-approval.templet';
-import { Subscriptions } from 'src/modules/strip/strip.entity';
+import { Subscriptions } from 'src/modules/stripe/stripe.entity';
 
 @Injectable()
 export class CustomMailerService {
